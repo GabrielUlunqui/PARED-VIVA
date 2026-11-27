@@ -17,7 +17,7 @@ fn config(env: &Env) -> Config {
         hitos: vec![env, 400 * USDC, 300 * USDC, 300 * USDC],
         filas: 20,
         columnas: 30,
-        precio_ladrillo: 5 * USDC,
+        aporte_minimo: USDC,
     }
 }
 
@@ -33,6 +33,12 @@ fn se_despliega_con_config() {
 #[test]
 #[ignore]
 fn donar_ladrillo_libre_registra_ladrillo_aporte_y_guardian() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn donar_menos_del_minimo_falla() {
     todo!()
 }
 

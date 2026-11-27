@@ -25,7 +25,7 @@ pub struct Config {
     pub hitos: Vec<i128>,
     pub filas: u32,
     pub columnas: u32,
-    pub precio_ladrillo: i128,
+    pub aporte_minimo: i128,
 }
 
 #[contracttype]
@@ -39,7 +39,7 @@ pub struct Resumen {
     pub hitos: Vec<i128>,
     pub filas: u32,
     pub columnas: u32,
-    pub precio_ladrillo: i128,
+    pub aporte_minimo: i128,
 }
 
 #[contracttype]
@@ -79,6 +79,7 @@ pub enum Error {
     MetaNoAlcanzada = 7,
     NoReembolsable = 8,
     SinAporte = 9,
+    MontoInsuficiente = 20,
 }
 
 #[contract]
@@ -95,8 +96,8 @@ impl ParedViva {
         storage.set(&Clave::Ocupados, &Vec::<u32>::new(&env));
     }
 
-    // TODO [A1] guardar el ladrillo · [A3] auth, validaciones, transferencia, guardián, evento, TTL.
-    pub fn donar(env: Env, donante: Address, ladrillo_id: u32, recuerdo_cid: String) -> Result<(), Error> {
+    // TODO [A1] guardar el ladrillo · [A3] auth, validaciones (monto >= aporte_minimo), transferencia de `monto`, guardián, evento, TTL.
+    pub fn donar(env: Env, donante: Address, ladrillo_id: u32, recuerdo_cid: String, monto: i128) -> Result<(), Error> {
         todo!()
     }
 

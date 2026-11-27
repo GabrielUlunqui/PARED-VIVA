@@ -24,7 +24,7 @@ stellar contract deploy \
     \"hitos\": [\"4000000000\", \"3000000000\", \"3000000000\"],
     \"filas\": 20,
     \"columnas\": 30,
-    \"precio_ladrillo\": \"50000000\"
+    \"aporte_minimo\": \"10000000\"
   }"
 
 stellar contract bindings typescript \

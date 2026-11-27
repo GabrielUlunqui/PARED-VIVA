@@ -1,20 +1,287 @@
 ---
 import Modal from '../ui/Modal.astro';
+import Boton from '../ui/Boton.astro';
+import { MAX_TEXTO } from '../../lib/ipfs';
+
+const MONTOS_SUGERIDOS = ['1', '5', '10', '25'];
+const MONTO_INICIAL = '5';
 ---
 
 <Modal id="modal-donar" titulo="Adoptá un ladrillo">
-  <p>Ladrillo <strong data-donar-id>—</strong></p>
-  <p>TODO [B5]: recuerdo (texto, imagen, alias) → subirRecuerdo → firmar donar → confirmación.</p>
+  <form class="donar" data-donar-form novalidate>
+    <p class="resumen">Ladrillo <strong data-donar-id>—</strong></p>
+
+    <fieldset class="monto">
+      <legend>¿Cuánto querés aportar? <small>(mínimo <span data-donar-minimo>—</span>)</small></legend>
+      <div class="sugeridos">
+        {MONTOS_SUGERIDOS.map((m) => <button type="button" class="sugerido" data-monto={m}>{m} USDC</button>)}
+      </div>
+      <label class="otro">
+        Otro monto
+        <span class="campo-monto">
+          <input type="text" name="monto" inputmode="decimal" autocomplete="off" value={MONTO_INICIAL} />
+          <span>USDC</span>
+        </span>
+      </label>
+    </fieldset>
+
+    <label>
+      Tu recuerdo de este lugar
+      <textarea name="texto" maxlength={MAX_TEXTO} rows="4" required placeholder="¿Qué te recuerda esta pared?"></textarea>
+      <small class="contador"><span data-donar-contador>0</span>/{MAX_TEXTO}</small>
+    </label>
+
+    <label>
+      Foto (opcional, JPG, PNG o WebP de hasta 2 MB)
+      <input type="file" name="imagen" accept="image/jpeg,image/png,image/webp" />
+    </label>
+
+    <label>
+      ¿Cómo querés aparecer? (opcional)
+      <input type="text" name="alias" maxlength="40" placeholder="Anónimo" />
+    </label>
+
+    <p class="estado" data-donar-estado role="status" hidden></p>
+    <p class="error" data-donar-error role="alert" hidden></p>
+
+    <Boton type="submit" data-donar-enviar>Donar</Boton>
+  </form>
+
+  <div class="exito" data-donar-exito hidden>
+    <p>
+      ¡Adoptaste el ladrillo <strong data-exito-id></strong> con <strong data-exito-monto></strong>! Tu recuerdo ya es
+      parte de la memoria del mural.
+    </p>
+    <p class="enlaces">
+      <a data-exito-ladrillo href="/">Ver mi ladrillo</a>
+      <a data-exito-tx href="/" target="_blank" rel="noopener">Ver transacción</a>
+    </p>
+  </div>
 </Modal>
 
 <script>
-  import { escuchar } from '../../lib/eventos';
+  import { datos } from '../../lib/datos';
+  import { emitir, escuchar } from '../../lib/eventos';
+  import { MAX_IMAGEN_BYTES, TIPOS_IMAGEN, subirRecuerdo } from '../../lib/ipfs';
+  import { traducirError } from '../../lib/stellar/errores';
+  import { donar, urlTransaccion, type EtapaTx } from '../../lib/stellar/transacciones';
+  import { conectar, direccionActual } from '../../lib/stellar/wallet';
+  import { formatearUsdc, parsearUsdc } from '../../lib/tipos';
 
   const modal = document.getElementById('modal-donar') as HTMLDialogElement;
-  const etiquetaId = modal.querySelector('[data-donar-id]') as HTMLElement;
+  const $ = <T extends HTMLElement>(sel: string) => modal.querySelector(sel) as T;
 
-  escuchar('pv:ladrillo-seleccionado', ({ id }) => {
-    etiquetaId.textContent = `#${id}`;
+  const form = $<HTMLFormElement>('[data-donar-form]');
+  const texto = form.elements.namedItem('texto') as HTMLTextAreaElement;
+  const imagen = form.elements.namedItem('imagen') as HTMLInputElement;
+  const alias = form.elements.namedItem('alias') as HTMLInputElement;
+  const montoInput = form.elements.namedItem('monto') as HTMLInputElement;
+  const sugeridos = modal.querySelectorAll<HTMLButtonElement>('[data-monto]');
+  const enviar = $<HTMLButtonElement>('[data-donar-enviar]');
+  const estado = $('[data-donar-estado]');
+  const error = $('[data-donar-error]');
+  const exito = $('[data-donar-exito]');
+
+  const MENSAJES_ETAPA: Record<EtapaTx, string> = {
+    firmando: 'Confirmá la donación en Freighter…',
+    enviando: 'Enviando a la red Stellar…',
+  };
+
+  let ladrilloId: number | null = null;
+  let minimo = 0n;
+
+  function mostrar(el: HTMLElement, contenido: string | null) {
+    el.hidden = !contenido;
+    el.textContent = contenido ?? '';
+  }
+
+  function montoActual(): bigint | null {
+    return parsearUsdc(montoInput.value);
+  }
+
+  function actualizarMonto() {
+    const monto = montoActual();
+    enviar.textContent = monto && monto >= minimo ? `Donar ${formatearUsdc(monto)}` : 'Donar';
+    sugeridos.forEach((b) => b.classList.toggle('activo', parsearUsdc(b.dataset.monto!) === monto));
+  }
+
+  function reiniciar() {
+    form.reset();
+    form.hidden = false;
+    exito.hidden = true;
+    $('[data-donar-contador]').textContent = '0';
+    mostrar(estado, null);
+    mostrar(error, null);
+    enviar.disabled = false;
+    actualizarMonto();
+  }
+
+  function validar(): string | null {
+    const monto = montoActual();
+    if (monto === null) return 'Ingresá un monto válido, por ejemplo 5 o 2,50.';
+    if (monto < minimo) return `El aporte mínimo es ${formatearUsdc(minimo)}.`;
+    if (!texto.value.trim()) return 'Escribí un recuerdo para tu ladrillo.';
+    const archivo = imagen.files?.[0];
+    if (archivo && !TIPOS_IMAGEN.includes(archivo.type)) return 'La foto tiene que ser JPG, PNG o WebP.';
+    if (archivo && archivo.size > MAX_IMAGEN_BYTES) return 'La foto no puede superar los 2 MB.';
+    return null;
+  }
+
+  async function obtenerDireccion(): Promise<string> {
+    const actual = await direccionActual();
+    if (actual) return actual;
+    mostrar(estado, 'Conectando tu wallet…');
+    const nueva = await conectar();
+    emitir('pv:wallet-cambiada', { direccion: nueva });
+    return nueva;
+  }
+
+  texto.addEventListener('input', () => {
+    $('[data-donar-contador]').textContent = String(texto.value.length);
+  });
+
+  montoInput.addEventListener('input', actualizarMonto);
+  sugeridos.forEach((boton) =>
+    boton.addEventListener('click', () => {
+      montoInput.value = boton.dataset.monto!;
+      actualizarMonto();
+    }),
+  );
+
+  escuchar('pv:ladrillo-seleccionado', async ({ id }) => {
+    ladrilloId = id;
+    $('[data-donar-id]').textContent = `#${id}`;
+    minimo = (await datos.obtenerCampania()).aporteMinimo;
+    $('[data-donar-minimo]').textContent = formatearUsdc(minimo);
+    reiniciar();
     modal.showModal();
   });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (ladrilloId === null) return;
+    const invalido = validar();
+    mostrar(error, invalido);
+    if (invalido) return;
+
+    const id = ladrilloId;
+    const monto = montoActual()!;
+    enviar.disabled = true;
+    try {
+      const donante = await obtenerDireccion();
+      if (await datos.obtenerLadrillo(id)) throw new Error('Error(Contract, #2)');
+
+      mostrar(estado, 'Guardando tu recuerdo…');
+      const cid = await subirRecuerdo(texto.value.trim(), imagen.files?.[0], alias.value.trim() || undefined);
+
+      const { valor: ladrillo, txHash } = await donar(donante, id, cid, monto, (etapa) =>
+        mostrar(estado, MENSAJES_ETAPA[etapa]),
+      );
+
+      emitir('pv:donacion-confirmada', { ladrillo, txHash });
+      form.hidden = true;
+      exito.hidden = false;
+      $('[data-exito-id]').textContent = `#${id}`;
+      $('[data-exito-monto]').textContent = formatearUsdc(monto);
+      $<HTMLAnchorElement>('[data-exito-ladrillo]').href = `/ladrillo/${id}`;
+      const enlaceTx = $<HTMLAnchorElement>('[data-exito-tx]');
+      enlaceTx.hidden = !txHash || txHash.startsWith('mock-');
+      enlaceTx.href = urlTransaccion(txHash);
+    } catch (err) {
+      mostrar(estado, null);
+      mostrar(error, traducirError(err));
+    } finally {
+      enviar.disabled = false;
+    }
+  });
 </script>
+
+<style>
+  .donar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio);
+    margin-top: var(--espacio);
+  }
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-weight: 600;
+  }
+  textarea,
+  input[type='text'] {
+    font: inherit;
+    font-weight: 400;
+    padding: 0.5rem;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+  }
+  .contador {
+    align-self: flex-end;
+    font-weight: 400;
+    opacity: 0.7;
+  }
+  .resumen {
+    margin: 0;
+  }
+  .monto {
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    padding: var(--espacio);
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .monto legend {
+    font-weight: 600;
+    padding: 0 0.25rem;
+  }
+  .monto legend small {
+    font-weight: 400;
+    opacity: 0.7;
+  }
+  .sugeridos {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .sugerido {
+    flex: 1;
+    font: inherit;
+    padding: 0.5rem;
+    border: 1px solid var(--color-secundario);
+    border-radius: var(--radio);
+    background: transparent;
+    color: var(--color-secundario);
+    cursor: pointer;
+  }
+  .sugerido.activo {
+    background: var(--color-secundario);
+    color: white;
+  }
+  .otro {
+    font-weight: 400;
+  }
+  .campo-monto {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .campo-monto input {
+    flex: 1;
+  }
+  .estado {
+    margin: 0;
+    color: var(--color-secundario);
+  }
+  .error {
+    margin: 0;
+    color: var(--color-primario);
+  }
+  .enlaces {
+    display: flex;
+    gap: var(--espacio);
+  }
+</style>

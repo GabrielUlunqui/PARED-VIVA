@@ -4,7 +4,8 @@ import type { FuenteDatos } from './tipos';
 
 const FILAS = 20;
 const COLUMNAS = 30;
-const PRECIO = 5n * UNIDAD_USDC;
+const MINIMO = 1n * UNIDAD_USDC;
+const MONTOS_EJEMPLO = [1n, 2n, 5n, 5n, 10n, 25n].map((m) => m * UNIDAD_USDC);
 const OCUPADOS_INICIALES = 120;
 
 function aleatorio(semilla: number): () => number {
@@ -19,11 +20,11 @@ function direccionFalsa(n: number): string {
   return `G${n.toString(36).toUpperCase().padStart(55, 'A')}`;
 }
 
-function crearLadrillo(id: number, n: number): Ladrillo {
+function crearLadrillo(id: number, n: number, monto: bigint): Ladrillo {
   return {
     id,
     donante: direccionFalsa(n),
-    monto: PRECIO,
+    monto,
     recuerdoCid: `mock-${id}`,
     fecha: Math.floor(Date.now() / 1000) - (OCUPADOS_INICIALES - n) * 3600,
   };
@@ -33,21 +34,31 @@ const ladrillos = new Map<number, Ladrillo>();
 const rnd = aleatorio(42);
 while (ladrillos.size < OCUPADOS_INICIALES) {
   const id = Math.floor(rnd() * FILAS * COLUMNAS);
-  if (!ladrillos.has(id)) ladrillos.set(id, crearLadrillo(id, ladrillos.size));
+  const monto = MONTOS_EJEMPLO[Math.floor(rnd() * MONTOS_EJEMPLO.length)];
+  if (!ladrillos.has(id)) ladrillos.set(id, crearLadrillo(id, ladrillos.size, monto));
 }
 
 function campania(): Campania {
   return {
     estado: 'Activa',
     meta: 1000n * UNIDAD_USDC,
-    recaudado: BigInt(ladrillos.size) * PRECIO,
+    recaudado: [...ladrillos.values()].reduce((total, l) => total + l.monto, 0n),
     fechaLimite: Math.floor(Date.now() / 1000) + 14 * 24 * 3600,
     hitoActual: 0,
     hitos: [400n * UNIDAD_USDC, 300n * UNIDAD_USDC, 300n * UNIDAD_USDC],
     filas: FILAS,
     columnas: COLUMNAS,
-    precioLadrillo: PRECIO,
+    aporteMinimo: MINIMO,
   };
+}
+
+export function registrarDonacionMock(id: number, donante: string, recuerdoCid: string, monto: bigint): Ladrillo {
+  if (ladrillos.has(id)) throw new Error('Error(Contract, #2)');
+  if (id < 0 || id >= FILAS * COLUMNAS) throw new Error('Error(Contract, #3)');
+  if (monto < MINIMO) throw new Error('Error(Contract, #20)');
+  const nuevo: Ladrillo = { id, donante, monto, recuerdoCid, fecha: Math.floor(Date.now() / 1000) };
+  ladrillos.set(id, nuevo);
+  return nuevo;
 }
 
 export const fuenteMock: FuenteDatos = {
@@ -65,7 +76,8 @@ export const fuenteMock: FuenteDatos = {
       const libres = Array.from({ length: FILAS * COLUMNAS }, (_, i) => i).filter((i) => !ladrillos.has(i));
       if (libres.length === 0) return;
       const id = libres[Math.floor(Math.random() * libres.length)];
-      const nuevo = crearLadrillo(id, ladrillos.size);
+      const monto = MONTOS_EJEMPLO[Math.floor(Math.random() * MONTOS_EJEMPLO.length)];
+      const nuevo = crearLadrillo(id, ladrillos.size, monto);
       nuevo.fecha = Math.floor(Date.now() / 1000);
       ladrillos.set(id, nuevo);
       cb(nuevo);

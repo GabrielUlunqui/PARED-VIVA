@@ -122,6 +122,7 @@ Errores (`#[contracterror]`, el número es lo que ve el frontend):
 | 7 | `MetaNoAlcanzada` | Aprobar sin estar en `Financiada` |
 | 8 | `NoReembolsable` | Reembolsar fuera de `Fallida` |
 | 9 | `SinAporte` | Reembolsar sin aporte o ya reembolsado |
+| 20 | `MontoInsuficiente` | `monto < aporte_minimo` (se usa 20 para no chocar con los códigos 10 y 13 del token USDC) |
 
 ### 4.2 Tipos TypeScript (dueño: B) — `frontend/src/lib/tipos.ts`
 
@@ -137,7 +138,7 @@ export interface Campania {
   hitos: bigint[];         // monto de cada hito
   filas: number;
   columnas: number;
-  precioLadrillo: bigint;
+  aporteMinimo: bigint;    // el donante elige el monto, desde este mínimo
 }
 
 export interface Ladrillo {
@@ -254,7 +255,8 @@ Duración estimada: una sesión corta. Al terminar, cada uno puede irse a trabaj
 ### A3. `donar` completo
 - [ ] `donante.require_auth()`.
 - [ ] Validar estado `Activa`, fecha límite no vencida, ladrillo válido y libre.
-- [ ] Transferir `precio_ladrillo` del donante al contrato con el cliente del token.
+- [ ] Validar `monto >= aporte_minimo` (si no, `MontoInsuficiente`).
+- [ ] Transferir `monto` del donante al contrato con el cliente del token.
 - [ ] Sumar a `Recaudado` y `Aporte(donante)`; marcar `Guardian(donante)`.
 - [ ] Si `recaudado >= meta` → estado `Financiada`.
 - [ ] Emitir evento `donacion`.
@@ -331,7 +333,7 @@ Duración estimada: una sesión corta. Al terminar, cada uno puede irse a trabaj
 ### B5. Flujo de donación (requiere A2; usa `subirRecuerdo` de C o un stub)
 - [ ] `src/components/donar/DonarModal.astro`, usando `Modal` de C.
 - [ ] Se abre al escuchar `pv:ladrillo-seleccionado`.
-- [ ] Pasos: (1) ladrillo y precio, (2) recuerdo: texto, imagen opcional, alias, (3) conectar wallet si falta, (4) subir a IPFS con `subirRecuerdo`, (5) simular y firmar `donar`, (6) confirmación con link a stellar.expert.
+- [ ] Pasos: (1) ladrillo y monto libre desde el mínimo, (2) recuerdo: texto, imagen opcional, alias, (3) conectar wallet si falta, (4) subir a IPFS con `subirRecuerdo`, (5) simular y firmar `donar`, (6) confirmación con link a stellar.expert.
 - [ ] Mientras C no termine IPFS: stub local que devuelve un CID fijo.
 - [ ] `src/lib/stellar/errores.ts`: traducir errores a mensajes en español: códigos 1–9 del contrato, sin trustline de USDC, saldo insuficiente, usuario rechazó la firma, red equivocada.
 - [ ] Al confirmar, emitir `pv:donacion-confirmada`.

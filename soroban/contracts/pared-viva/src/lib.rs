@@ -1,155 +1,73 @@
 #![no_std]
-#![allow(unused_variables)]
 
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, Address, Env, String, Vec};
+mod almacen;
+mod constructor;
+mod donar;
+mod eventos;
+mod hitos;
+mod lecturas;
+mod reembolso;
+mod tipos;
 
-#[contracttype]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Estado {
-    Activa,
-    Financiada,
-    Completada,
-    Fallida,
-}
+#[cfg(test)]
+mod test;
 
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Config {
-    pub admin: Address,
-    pub token: Address,
-    pub restaurador: Address,
-    pub fondo: Address,
-    pub firmantes: Vec<Address>,
-    pub meta: i128,
-    pub fecha_limite: u64,
-    pub hitos: Vec<i128>,
-    pub filas: u32,
-    pub columnas: u32,
-    pub aporte_minimo: i128,
-}
+pub use eventos::{Donacion, HitoAprobado, HitoPagado, Reembolso};
+pub use tipos::{Clave, Config, Error, Estado, Ladrillo, Resumen};
 
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Resumen {
-    pub estado: Estado,
-    pub meta: i128,
-    pub recaudado: i128,
-    pub fecha_limite: u64,
-    pub hito_actual: u32,
-    pub hitos: Vec<i128>,
-    pub filas: u32,
-    pub columnas: u32,
-    pub aporte_minimo: i128,
-}
-
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Ladrillo {
-    pub id: u32,
-    pub donante: Address,
-    pub monto: i128,
-    pub recuerdo: String,
-    pub fecha: u64,
-}
-
-#[contracttype]
-#[derive(Clone)]
-pub enum Clave {
-    Config,
-    Recaudado,
-    HitoActual,
-    Ocupados,
-    Ladrillo(u32),
-    Aporte(Address),
-    Guardian(Address),
-    Aprobacion(u32, Address),
-    Aprobaciones(u32),
-}
-
-#[contracterror]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-#[repr(u32)]
-pub enum Error {
-    CampaniaNoActiva = 1,
-    LadrilloOcupado = 2,
-    LadrilloInvalido = 3,
-    NoEsFirmante = 4,
-    YaAprobado = 5,
-    HitoInvalido = 6,
-    MetaNoAlcanzada = 7,
-    NoReembolsable = 8,
-    SinAporte = 9,
-    MontoInsuficiente = 20,
-}
+use soroban_sdk::{contract, contractimpl, Address, Env, String, Vec};
 
 #[contract]
 pub struct ParedViva;
 
+// Interfaz pública congelada (PLAN_DE_TRABAJO.md §4.1). La lógica vive en un módulo por tarea.
 #[contractimpl]
 impl ParedViva {
-    // TODO [A1]: validar 3 firmantes, hitos que sumen la meta y montos > 0.
     pub fn __constructor(env: Env, config: Config) {
-        let storage = env.storage().instance();
-        storage.set(&Clave::Config, &config);
-        storage.set(&Clave::Recaudado, &0i128);
-        storage.set(&Clave::HitoActual, &0u32);
-        storage.set(&Clave::Ocupados, &Vec::<u32>::new(&env));
+        constructor::inicializar(&env, config)
     }
 
-    // TODO [A1] guardar el ladrillo · [A3] auth, validaciones (monto >= aporte_minimo), transferencia de `monto`, guardián, evento, TTL.
     pub fn donar(env: Env, donante: Address, ladrillo_id: u32, recuerdo_cid: String, monto: i128) -> Result<(), Error> {
-        todo!()
+        donar::donar(&env, donante, ladrillo_id, recuerdo_cid, monto)
     }
 
-    // TODO [A4]: 2 de 3 aprobaciones liberan el hito al restaurador.
     pub fn aprobar_hito(env: Env, firmante: Address, hito: u32) -> Result<(), Error> {
-        todo!()
+        hitos::aprobar_hito(&env, firmante, hito)
     }
 
-    // TODO [A5]: solo en estado Fallida; poner el aporte en 0 antes de transferir.
     pub fn reembolsar(env: Env, donante: Address) -> Result<i128, Error> {
-        todo!()
+        reembolso::reembolsar(&env, donante)
     }
 
-    // TODO [A5]: en estado Completada, enviar el saldo restante al fondo.
     pub fn retirar_excedente(env: Env) -> Result<i128, Error> {
-        todo!()
+        reembolso::retirar_excedente(&env)
     }
 
-    // TODO [A1]: calcular Fallida si venció la fecha límite sin meta.
     pub fn estado(env: Env) -> Resumen {
-        todo!()
+        lecturas::estado(&env)
     }
 
-    // TODO [A1]
     pub fn ladrillo(env: Env, id: u32) -> Option<Ladrillo> {
-        todo!()
+        lecturas::ladrillo(&env, id)
     }
 
-    // TODO [A1]: recorrer Clave::Ocupados.
     pub fn ladrillos(env: Env) -> Vec<Ladrillo> {
-        todo!()
+        lecturas::ladrillos(&env)
     }
 
-    // TODO [A1]
     pub fn aporte(env: Env, donante: Address) -> i128 {
-        todo!()
+        lecturas::aporte(&env, donante)
     }
 
-    // TODO [A1]: los 3 firmantes de Config (para el panel de firmantes).
     pub fn firmantes(env: Env) -> Vec<Address> {
-        todo!()
+        lecturas::firmantes(&env)
     }
 
-    // TODO [A4]: firmantes que aprobaron el hito (recorrer firmantes y leer Clave::Aprobacion(hito, f)).
     pub fn aprobaciones(env: Env, hito: u32) -> Vec<Address> {
-        todo!()
+        hitos::aprobaciones(&env, hito)
     }
 
-    // TODO [A1]: usada por fondo-barrio para habilitar votos.
     pub fn es_guardian(env: Env, direccion: Address) -> bool {
-        todo!()
+        lecturas::es_guardian(&env, direccion)
     }
 }
-
-mod test;

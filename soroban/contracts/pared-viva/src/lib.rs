@@ -136,6 +136,16 @@ impl ParedViva {
         todo!()
     }
 
+    // TODO [A1]: los 3 firmantes de Config (para el panel de firmantes).
+    pub fn firmantes(env: Env) -> Vec<Address> {
+        todo!()
+    }
+
+    // TODO [A4]: firmantes que aprobaron el hito (recorrer firmantes y leer Clave::Aprobacion(hito, f)).
+    pub fn aprobaciones(env: Env, hito: u32) -> Vec<Address> {
+        todo!()
+    }
+
     // TODO [A1]: usada por fondo-barrio para habilitar votos.
     pub fn es_guardian(env: Env, direccion: Address) -> bool {
         todo!()

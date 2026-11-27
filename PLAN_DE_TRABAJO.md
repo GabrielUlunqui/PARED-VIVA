@@ -305,8 +305,9 @@ Duración estimada: una sesión corta. Al terminar, cada uno puede irse a trabaj
 **Objetivo:** que la web lea el estado real del contrato, que se pueda donar, aprobar hitos y reembolsar con Freighter, y que las donaciones aparezcan en vivo.
 
 ### B0. Entorno
-- [ ] Node 22+ y `npm install` en `frontend/`.
-- [ ] Freighter en Testnet con XLM (Friendbot) y USDC de prueba (lo manda A).
+- [x] Node 22+ y `npm install` en `frontend/`.
+- [x] Freighter en Testnet con XLM (Friendbot).
+- [ ] USDC de prueba (lo manda A en A2).
 
 ### B1. Interfaces y mock ⭐ (desbloquea a C) — ✅ incluido en la estructura inicial
 - [x] `src/lib/tipos.ts` y `src/lib/eventos.ts` como la sección 4, con helpers `emitir` y `escuchar` tipados.
@@ -314,11 +315,11 @@ Duración estimada: una sesión corta. Al terminar, cada uno puede irse a trabaj
 - [x] `src/lib/datos/index.ts` elige mock o real según `PUBLIC_USAR_MOCK`.
 - [ ] Ajustar el mock si hace falta (B es el dueño).
 
-### B2. Wallet
-- [ ] `src/lib/stellar/wallet.ts`: `conectar()`, `direccionActual()`, `firmar(xdr)` con `@stellar/freighter-api`.
-- [ ] Verificar que Freighter esté instalada y en Testnet; si no, mensaje claro.
-- [ ] Recordar la conexión entre recargas (`localStorage`).
-- [ ] `src/components/wallet/ConectarWallet.astro`: botón "Conectar" / dirección abreviada `GABC…XYZ`; emite `pv:wallet-cambiada`.
+### B2. Wallet — ✅
+- [x] `src/lib/stellar/wallet.ts`: `conectar()`, `direccionActual()`, `firmar(xdr)` con `@stellar/freighter-api`.
+- [x] Verificar que Freighter esté instalada y en Testnet; si no, mensaje claro.
+- [x] Recordar la conexión entre recargas (`localStorage`).
+- [x] `src/components/wallet/ConectarWallet.astro`: botón "Conectar" / dirección abreviada `GABC…XYZ`; emite `pv:wallet-cambiada`.
 
 ### B3. Lecturas reales (requiere A1)
 - [ ] `src/lib/stellar/cliente.ts`: instancia el cliente de los bindings con `RED` y `CONTRATOS` de `config.ts`.
@@ -330,22 +331,28 @@ Duración estimada: una sesión corta. Al terminar, cada uno puede irse a trabaj
 - [ ] Implementar `suscribirDonaciones` real con eso.
 - [ ] Probar con dos navegadores: donar en uno, ver el ladrillo aparecer en el otro.
 
-### B5. Flujo de donación (requiere A2; usa `subirRecuerdo` de C o un stub)
-- [ ] `src/components/donar/DonarModal.astro`, usando `Modal` de C.
-- [ ] Se abre al escuchar `pv:ladrillo-seleccionado`.
-- [ ] Pasos: (1) ladrillo y monto libre desde el mínimo, (2) recuerdo: texto, imagen opcional, alias, (3) conectar wallet si falta, (4) subir a IPFS con `subirRecuerdo`, (5) simular y firmar `donar`, (6) confirmación con link a stellar.expert.
-- [ ] Mientras C no termine IPFS: stub local que devuelve un CID fijo.
-- [ ] `src/lib/stellar/errores.ts`: traducir errores a mensajes en español: códigos 1–9 del contrato, sin trustline de USDC, saldo insuficiente, usuario rechazó la firma, red equivocada.
-- [ ] Al confirmar, emitir `pv:donacion-confirmada`.
+### B5. Flujo de donación (requiere A2; usa `subirRecuerdo` de C o un stub) — ✅ con mock
+- [x] `src/components/donar/DonarModal.astro`, usando `Modal` de C.
+- [x] Se abre al escuchar `pv:ladrillo-seleccionado`.
+- [x] Pasos: (1) ladrillo y monto libre desde el mínimo, (2) recuerdo: texto, imagen opcional, alias, (3) conectar wallet si falta, (4) subir a IPFS con `subirRecuerdo`, (5) simular y firmar `donar`, (6) confirmación con link a stellar.expert.
+- [x] Mientras C no termine IPFS: usa el stub de `src/lib/ipfs`.
+- [x] `src/lib/stellar/errores.ts`: errores del contrato (1–9, 20), token (10 saldo, 13 trustline), firma rechazada, red equivocada, cuenta sin fondos.
+- [x] Al confirmar, emitir `pv:donacion-confirmada`.
+- [ ] Probar contra el contrato real cuando A complete A3 (`PUBLIC_USAR_MOCK=false`).
 
-### B6. Panel de firmantes (requiere A4)
-- [ ] `src/pages/firmantes.astro`: lista de hitos con monto, estado (pendiente / 1 de 2 / pagado) y quién aprobó.
-- [ ] Botón "Aprobar" visible solo si la wallet conectada es firmante y no aprobó.
-- [ ] Mostrar el hash de la transacción de pago al restaurador.
+### B6. Panel de firmantes (requiere A4) — ✅ con mock
+- [x] `src/pages/firmantes.astro`: lista de hitos con monto, estado (pendiente / 1 de 2 / pagado) y quién aprobó.
+- [x] Botón "Aprobar" visible solo si la wallet conectada es firmante y no aprobó.
+- [x] Link a la transacción de aprobación (la 2.ª aprobación es la que paga al restaurador).
+- [ ] Requiere en el contrato las lecturas `firmantes()` y `aprobaciones(hito)` (agregadas a la interfaz; A las implementa en A1/A4).
+- [ ] Probar contra el contrato real cuando A complete A4.
 
-### B7. Mi aporte y reembolso (requiere A5)
-- [ ] `src/pages/mi-aporte.astro`: total aportado, ladrillos propios, si es guardián.
-- [ ] Botón "Recuperar mi aporte" solo en estado `Fallida`.
+### B7. Mi aporte y reembolso (requiere A5) — ✅ con mock
+- [x] `src/pages/mi-aporte.astro`: total aportado, ladrillos propios, si es guardián.
+- [x] Botón "Recuperar mi aporte" solo en estado `Fallida`.
+- [ ] Probar contra el contrato real cuando A complete A5.
+
+> **Modo prueba:** en `/firmantes` y `/mi-aporte` aparece un selector de escenario (activa / meta alcanzada / fallida). La wallet conectada pasa a ser el firmante 3 y dueña de 3 ladrillos para poder probar todo sin contrato.
 
 ### B8. Fase 2 — Guardianes (requiere A8)
 - [ ] `src/pages/guardianes.astro`: propuestas, votos, botón votar si `es_guardian`.

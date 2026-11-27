@@ -1,8 +1,218 @@
 ---
 import Base from '../layouts/Base.astro';
+import PanelPrueba from '../components/prueba/PanelPrueba.astro';
 ---
 
 <Base titulo="Firmantes">
   <h1>Panel de firmantes</h1>
-  <p>TODO [B6]: hitos con monto y estado, aprobaciones, botón "Aprobar" para firmantes, hash del pago.</p>
+  <p class="intro">Los fondos se liberan al restaurador hito por hito, solo cuando aprueban 2 de los 3 firmantes.</p>
+  <PanelPrueba />
+
+  <p class="resumen" data-resumen>Cargando…</p>
+  <p class="aviso" data-aviso hidden></p>
+  <p class="estado" data-estado role="status" hidden></p>
+  <p class="error" data-error role="alert" hidden></p>
+  <p class="exito" data-exito role="status" hidden></p>
+
+  <ol class="hitos" data-hitos></ol>
+
+  <h2>Firmantes</h2>
+  <ul class="firmantes" data-firmantes></ul>
 </Base>
+
+<script>
+  import { datos } from '../lib/datos';
+  import { traducirError } from '../lib/stellar/errores';
+  import { alCambiarWallet } from '../lib/stellar/sesion';
+  import { aprobarHito, esTxReal, urlTransaccion, type EtapaTx } from '../lib/stellar/transacciones';
+  import { abreviar } from '../lib/stellar/wallet';
+  import { APROBACIONES_NECESARIAS, formatearUsdc, type Campania, type EstadoCampania, type Hito } from '../lib/tipos';
+
+  const $ = (sel: string) => document.querySelector(sel) as HTMLElement;
+  const lista = $('[data-hitos]');
+
+  const ETIQUETA_CAMPANIA: Record<EstadoCampania, string> = {
+    Activa: 'Recaudando',
+    Financiada: 'Meta alcanzada',
+    Completada: 'Completada',
+    Fallida: 'Fallida',
+  };
+  const ETIQUETA_HITO: Record<Hito['estado'], string> = {
+    Pendiente: 'Pendiente',
+    EnAprobacion: 'En aprobación',
+    Pagado: 'Pagado',
+  };
+  const MENSAJES_ETAPA: Record<EtapaTx, string> = {
+    firmando: 'Confirmá la aprobación en Freighter…',
+    enviando: 'Enviando a la red Stellar…',
+  };
+
+  let direccion: string | null = null;
+  let ocupado = false;
+
+  function mostrar(sel: string, contenido: string | null, html = false) {
+    const el = $(sel);
+    el.hidden = !contenido;
+    if (html) el.innerHTML = contenido ?? '';
+    else el.textContent = contenido ?? '';
+  }
+
+  function aviso(c: Campania, esFirmante: boolean): string | null {
+    if (c.estado === 'Activa') return 'Los hitos se pueden aprobar cuando la campaña alcance la meta.';
+    if (c.estado === 'Fallida') return 'La campaña no alcanzó la meta: no se liberan fondos y los donantes pueden recuperar su aporte.';
+    if (c.estado === 'Completada') return 'Todos los hitos fueron pagados al restaurador.';
+    if (!direccion) return 'Conectá tu wallet para aprobar hitos si sos firmante.';
+    if (!esFirmante) return 'Tu wallet no es firmante de esta campaña: solo podés ver el estado.';
+    return null;
+  }
+
+  function filaHito(h: Hito, c: Campania, esFirmante: boolean): string {
+    const yaAprobe = !!direccion && h.aprobadoPor.includes(direccion);
+    const puedeAprobar = esFirmante && c.estado === 'Financiada' && h.indice === c.hitoActual && !yaAprobe;
+    const quienes = h.aprobadoPor.map((d) => (d === direccion ? 'vos' : abreviar(d))).join(', ');
+    return `
+      <li class="hito ${h.estado.toLowerCase()}">
+        <div class="cabecera-hito">
+          <strong>Hito ${h.indice + 1}</strong>
+          <span>${formatearUsdc(h.monto)}</span>
+          <span class="insignia">${ETIQUETA_HITO[h.estado]}</span>
+        </div>
+        <p>${Math.min(h.aprobadoPor.length, APROBACIONES_NECESARIAS)} de ${APROBACIONES_NECESARIAS} aprobaciones${quienes ? ` · ${quienes}` : ''}</p>
+        ${puedeAprobar ? `<button type="button" class="aprobar" data-aprobar="${h.indice}" ${ocupado ? 'disabled' : ''}>Aprobar hito ${h.indice + 1}</button>` : ''}
+        ${yaAprobe && h.estado !== 'Pagado' ? '<p class="nota">Ya aprobaste este hito. Falta otro firmante.</p>' : ''}
+      </li>`;
+  }
+
+  async function render() {
+    try {
+      const [c, hitos, firmantes] = await Promise.all([
+        datos.obtenerCampania(),
+        datos.obtenerHitos(),
+        datos.obtenerFirmantes(),
+      ]);
+      const esFirmante = !!direccion && firmantes.includes(direccion);
+      mostrar(
+        '[data-resumen]',
+        `Estado: ${ETIQUETA_CAMPANIA[c.estado]} · Recaudado ${formatearUsdc(c.recaudado)} de ${formatearUsdc(c.meta)}`,
+      );
+      mostrar('[data-aviso]', aviso(c, esFirmante));
+      lista.innerHTML = hitos.map((h) => filaHito(h, c, esFirmante)).join('');
+      $('[data-firmantes]').innerHTML = firmantes
+        .map((f) => `<li><code>${abreviar(f)}</code>${f === direccion ? ' <strong>(vos)</strong>' : ''}</li>`)
+        .join('');
+    } catch (e) {
+      mostrar('[data-error]', traducirError(e));
+    }
+  }
+
+  lista.addEventListener('click', async (e) => {
+    const boton = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-aprobar]');
+    if (!boton || !direccion || ocupado) return;
+    const indice = Number(boton.dataset.aprobar);
+    ocupado = true;
+    boton.disabled = true;
+    mostrar('[data-error]', null);
+    mostrar('[data-exito]', null);
+    try {
+      const { txHash } = await aprobarHito(direccion, indice, (etapa) => mostrar('[data-estado]', MENSAJES_ETAPA[etapa]));
+      const hito = (await datos.obtenerHitos())[indice];
+      const texto =
+        hito.estado === 'Pagado'
+          ? `¡Hito ${indice + 1} liberado! Se transfirieron ${formatearUsdc(hito.monto)} al restaurador.`
+          : `Aprobación registrada. Falta ${APROBACIONES_NECESARIAS - hito.aprobadoPor.length} aprobación más para liberar el hito.`;
+      const enlace = esTxReal(txHash) ? ` <a href="${urlTransaccion(txHash)}" target="_blank" rel="noopener">Ver transacción</a>` : '';
+      mostrar('[data-exito]', texto + enlace, true);
+    } catch (err) {
+      mostrar('[data-error]', traducirError(err));
+    } finally {
+      ocupado = false;
+      mostrar('[data-estado]', null);
+      await render();
+    }
+  });
+
+  alCambiarWallet((nueva) => {
+    direccion = nueva;
+    render();
+  });
+</script>
+
+<style>
+  .intro {
+    opacity: 0.85;
+  }
+  .resumen {
+    font-weight: 600;
+  }
+  .aviso {
+    color: var(--color-secundario);
+  }
+  .estado {
+    color: var(--color-secundario);
+  }
+  .error {
+    color: var(--color-primario);
+  }
+  .exito {
+    color: var(--color-secundario);
+    font-weight: 600;
+  }
+  .hitos {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--espacio);
+  }
+  .hitos :global(.hito) {
+    background: white;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    padding: var(--espacio);
+  }
+  .hitos :global(.hito p) {
+    margin: 0.5rem 0 0;
+  }
+  .hitos :global(.cabecera-hito) {
+    display: flex;
+    gap: var(--espacio);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .hitos :global(.insignia) {
+    margin-left: auto;
+    font-size: 0.8rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    background: var(--color-libre);
+  }
+  .hitos :global(.enaprobacion .insignia) {
+    background: #f3d9a4;
+  }
+  .hitos :global(.pagado .insignia) {
+    background: var(--color-secundario);
+    color: white;
+  }
+  .hitos :global(.aprobar) {
+    margin-top: 0.75rem;
+    border: none;
+    border-radius: var(--radio);
+    padding: 0.6rem 1.2rem;
+    font: inherit;
+    font-weight: 600;
+    background: var(--color-primario);
+    color: white;
+    cursor: pointer;
+  }
+  .hitos :global(.aprobar:disabled) {
+    opacity: 0.6;
+    cursor: wait;
+  }
+  .hitos :global(.nota) {
+    font-size: 0.9rem;
+    opacity: 0.8;
+  }
+  .firmantes code {
+    font-size: 0.9rem;
+  }
+</style>

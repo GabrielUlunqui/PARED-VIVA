@@ -11,6 +11,8 @@ export interface ClienteParedViva extends contract.Client {
     recuerdo_cid: string;
     monto: bigint;
   }): Promise<contract.AssembledTransaction<null>>;
+  aprobar_hito(args: { firmante: string; hito: number }): Promise<contract.AssembledTransaction<null>>;
+  reembolsar(args: { donante: string }): Promise<contract.AssembledTransaction<contract.Result<bigint>>>;
 }
 
 const clientes = new Map<string, Promise<ClienteParedViva>>();

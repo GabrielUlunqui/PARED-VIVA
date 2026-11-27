@@ -65,7 +65,8 @@ const MONTO_INICIAL = '5';
   import { MAX_IMAGEN_BYTES, TIPOS_IMAGEN, subirRecuerdo } from '../../lib/ipfs';
   import { traducirError } from '../../lib/stellar/errores';
   import { donar, urlTransaccion, type EtapaTx } from '../../lib/stellar/transacciones';
-  import { conectar, direccionActual } from '../../lib/stellar/wallet';
+  import { conectarYAvisar } from '../../lib/stellar/sesion';
+  import { direccionActual } from '../../lib/stellar/wallet';
   import { formatearUsdc, parsearUsdc } from '../../lib/tipos';
 
   const modal = document.getElementById('modal-donar') as HTMLDialogElement;
@@ -131,9 +132,7 @@ const MONTO_INICIAL = '5';
     const actual = await direccionActual();
     if (actual) return actual;
     mostrar(estado, 'Conectando tu wallet…');
-    const nueva = await conectar();
-    emitir('pv:wallet-cambiada', { direccion: nueva });
-    return nueva;
+    return conectarYAvisar();
   }
 
   texto.addEventListener('input', () => {

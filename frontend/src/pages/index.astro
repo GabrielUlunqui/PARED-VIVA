@@ -1,36 +1,147 @@
 ---
 import Base from '../layouts/Base.astro';
+import CalleArte from '../components/mural/CalleArte.astro';
 import MuralGrid from '../components/mural/MuralGrid.astro';
 import Progreso from '../components/mural/Progreso.astro';
 import DonarModal from '../components/donar/DonarModal.astro';
+
+const pasos = [
+  { numero: '01', titulo: 'Elegí tu ladrillo', texto: 'Tocá un ladrillo libre del mural. Cada uno es un pedacito de la pared real.', color: 'text-rosa' },
+  { numero: '02', titulo: 'Dejá un recuerdo', texto: 'Contá una historia o subí una foto y donás en USDC desde tu wallet.', color: 'text-violeta' },
+  {
+    numero: '03',
+    titulo: 'La pared se pinta',
+    texto: 'Los fondos se liberan por hitos cuando aprueban 2 de 3 firmantes. Si no se llega a la meta, recuperás tu aporte.',
+    color: 'text-ambar',
+  },
+];
 ---
 
-<Base>
-  <section class="hero">
-    <h1>Pared Viva</h1>
-    <p>Adoptá un ladrillo, dejá un recuerdo y ayudá a restaurar el mural del barrio.</p>
-  </section>
+<Base completo>
+  <CalleArte>
+    <div class="max-w-xl">
+      <p class="neon m-0 text-sm uppercase tracking-[0.35em] text-ambar">Medianoche en el barrio</p>
+      <h1 class="m-0 mt-2 text-7xl leading-[0.9] tracking-normal md:text-8xl">Cada ladrillo<br /><span class="neon text-rosa">hace arte</span></h1>
+      <p class="m-0 mt-4 max-w-sm border-l-4 border-[#8a3b2b] pl-4 text-white/70">
+        Los ladrillos del barrio se mueven solos y se arman en grandes obras. Sumá el tuyo al mural.
+      </p>
+    </div>
+  </CalleArte>
 
-  <Progreso />
-  <MuralGrid />
+  <div class="mx-auto flex max-w-6xl flex-col px-4">
+    <section class="grid min-h-screen items-center gap-8 py-28 lg:grid-cols-2">
+      <Progreso>
+        <a href="#mural-seccion" class="boton-ladrillo mt-6 block w-full py-4 text-center text-lg uppercase tracking-wider no-underline">Adoptá tu ladrillo</a>
+      </Progreso>
+      <div></div>
+    </section>
 
-  <section class="como-funciona">
-    <h2>Cómo funciona</h2>
-    <ol>
-      <li>Elegís un ladrillo libre del mural.</li>
-      <li>Dejás un recuerdo y donás en USDC.</li>
-      <li>Los fondos se liberan por hitos cuando aprueban 2 de 3 firmantes. Si no se llega a la meta, recuperás tu aporte.</li>
-    </ol>
-  </section>
+    <section id="mural-seccion" class="flex min-h-screen scroll-mt-28 flex-col justify-center py-28">
+      <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p class="etiqueta m-0">El mural</p>
+          <h2 class="m-0 text-5xl md:text-6xl">Elegí <span class="neon text-rosa">tu ladrillo</span></h2>
+        </div>
+        <p class="m-0 max-w-sm text-sm text-white/60">Los ladrillos apagados están libres. Los que brillan ya tienen dueño y un recuerdo para leer.</p>
+      </div>
+      <MuralGrid />
+    </section>
+
+    <section class="flex min-h-screen flex-col justify-center py-28">
+      <p class="etiqueta m-0">Cómo funciona</p>
+      <h2 class="m-0 text-5xl md:text-6xl">Una pared que <span class="neon text-ambar">guarda memoria</span></h2>
+      <p class="m-0 mt-4 max-w-2xl text-white/80 [text-shadow:0_2px_10px_#0a0812,0_0_24px_#0a0812]">
+        El mural del barrio se está borrando. Cada aporte adopta un ladrillo de su versión digital y le suma un recuerdo que queda guardado para
+        siempre. Cuando se llega a la meta, el dinero va al restaurador por etapas, y solo si los firmantes del barrio lo aprueban.
+      </p>
+      <div class="mt-6 grid max-w-2xl grid-cols-3 gap-3 text-center">
+        <div class="caja p-3"><p class="m-0 font-display text-2xl text-rosa md:text-3xl">2 de 3</p><p class="m-0 text-xs uppercase text-white/50">firmas por hito</p></div>
+        <div class="caja p-3"><p class="m-0 font-display text-2xl text-violeta md:text-3xl">100%</p><p class="m-0 text-xs uppercase text-white/50">reembolsable</p></div>
+        <div class="caja p-3"><p class="m-0 font-display text-2xl text-ambar md:text-3xl">On-chain</p><p class="m-0 text-xs uppercase text-white/50">cada recuerdo</p></div>
+      </div>
+      <ol class="m-0 mt-8 grid list-none gap-6 p-0 md:grid-cols-3">
+        {
+          pasos.map((p) => (
+            <li class="cartel">
+              <p class:list={['neon m-0 font-display text-6xl', p.color]}>{p.numero}</p>
+              <h3 class="m-0 mt-2 text-3xl">{p.titulo}</h3>
+              <p class="m-0 mt-2 text-white/70">{p.texto}</p>
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    <section class="flex min-h-screen flex-col justify-center py-28">
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p class="etiqueta m-0">El archivo</p>
+          <h2 class="m-0 text-5xl md:text-6xl">Lo que cuenta <span class="neon text-ambar">la pared</span></h2>
+        </div>
+        <a href="/archivo" class="boton-neon px-4 py-2 text-sm font-bold uppercase tracking-wider no-underline">Ver todos los recuerdos</a>
+      </div>
+      <div class="recientes mt-8 grid gap-6 md:grid-cols-3" aria-busy="true">
+        {
+          [0, 1, 2].map(() => (
+            <div class="cartel animate-pulse">
+              <div class="h-4 w-11/12 bg-white/10" />
+              <div class="mt-3 h-4 w-8/12 bg-white/10" />
+              <div class="mt-8 h-3 w-5/12 bg-white/10" />
+            </div>
+          ))
+        }
+      </div>
+    </section>
+  </div>
 
   <DonarModal />
 </Base>
 
-<style>
-  .hero h1 {
-    margin-bottom: 0;
+<script>
+  import { datos } from '../lib/datos';
+  import { emitir } from '../lib/eventos';
+  import { leerRecuerdo } from '../lib/ipfs';
+
+  const COLORES = ['text-rosa', 'text-violeta', 'text-ambar'];
+  const contenedor = document.querySelector('.recientes') as HTMLElement;
+
+  function tarjeta(id: number, texto: string, alias: string, color: string) {
+    const a = document.createElement('a');
+    a.href = `/ladrillo/${id}`;
+    a.className = 'cartel block text-inherit no-underline transition hover:-translate-y-2';
+    const p = document.createElement('p');
+    p.className = 'm-0 text-xl';
+    p.textContent = `“${texto}”`;
+    const firma = document.createElement('p');
+    firma.className = `m-0 mt-6 text-sm uppercase tracking-wider ${color}`;
+    firma.textContent = `${alias} · Ladrillo #${id}`;
+    a.append(p, firma);
+    return a;
   }
-  .como-funciona {
-    margin-top: calc(var(--espacio) * 2);
+
+  async function cargarRecientes() {
+    const ladrillos = (await datos.obtenerLadrillos()).sort((a, b) => b.fecha - a.fecha).slice(0, 3);
+    const recuerdos = await Promise.allSettled(ladrillos.map((l) => leerRecuerdo(l.recuerdoCid)));
+    const tarjetas: HTMLElement[] = ladrillos.flatMap((l, i) => {
+      const r = recuerdos[i];
+      return r.status === 'fulfilled' ? [tarjeta(l.id, r.value.texto, r.value.alias ?? 'Anónimo', COLORES[i % COLORES.length])] : [];
+    });
+    if (tarjetas.length === 0) {
+      const vacio = document.createElement('p');
+      vacio.className = 'cartel m-0 text-white/60 md:col-span-3';
+      vacio.textContent = 'Todavía no hay recuerdos. ¡El primero puede ser el tuyo!';
+      tarjetas.push(vacio);
+    }
+    contenedor.replaceChildren(...tarjetas);
+    contenedor.setAttribute('aria-busy', 'false');
   }
-</style>
+
+  cargarRecientes().catch(() => contenedor.replaceChildren());
+
+  const pedido = Number(new URLSearchParams(location.search).get('ladrillo'));
+  if (Number.isInteger(pedido) && pedido >= 0 && new URLSearchParams(location.search).has('ladrillo')) {
+    const abrir = () => setTimeout(() => emitir('pv:ladrillo-seleccionado', { id: pedido }), 300);
+    if (document.readyState === 'complete') abrir();
+    else addEventListener('load', abrir, { once: true });
+  }
+</script>

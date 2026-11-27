@@ -7,7 +7,7 @@ import DonarModal from '../components/donar/DonarModal.astro';
 
 const pasos = [
   { numero: '01', titulo: 'Elegí tu ladrillo', texto: 'Tocá un ladrillo libre del mural. Cada uno es un pedacito de la pared real.', color: 'text-rosa' },
-  { numero: '02', titulo: 'Dejá un recuerdo', texto: 'Contá una historia o subí una foto y donás en USDC desde tu wallet.', color: 'text-violeta' },
+  { numero: '02', titulo: 'Dejá un recuerdo', texto: 'Contá una historia o subí una foto y doná en USDC desde tu wallet.', color: 'text-violeta' },
   {
     numero: '03',
     titulo: 'La pared se pinta',
@@ -25,6 +25,11 @@ const pasos = [
       <p class="m-0 mt-4 max-w-sm border-l-4 border-[#8a3b2b] pl-4 text-white/70">
         Los ladrillos del barrio se mueven solos y se arman en grandes obras. Sumá el tuyo al mural.
       </p>
+      <div class="mt-5 max-w-sm" data-hero-campania hidden>
+        <p class="m-0 text-sm text-white/80"><strong class="text-white" data-hero-recaudado>—</strong> de <span data-hero-meta>—</span> · <span data-hero-porcentaje>0</span>% de la meta</p>
+        <div class="barra-ladrillos mt-2 h-2" aria-hidden="true"><div class="relleno" data-hero-relleno style="width: 0%"></div></div>
+      </div>
+      <a href="#mural-seccion" class="boton-ladrillo mt-5 inline-block px-8 py-3 text-lg uppercase tracking-wider no-underline">Adoptá tu ladrillo</a>
     </div>
   </CalleArte>
 
@@ -57,7 +62,7 @@ const pasos = [
       <div class="mt-6 grid max-w-2xl grid-cols-3 gap-3 text-center">
         <div class="caja p-3"><p class="m-0 font-display text-2xl text-rosa md:text-3xl">2 de 3</p><p class="m-0 text-xs uppercase text-white/50">firmas por hito</p></div>
         <div class="caja p-3"><p class="m-0 font-display text-2xl text-violeta md:text-3xl">100%</p><p class="m-0 text-xs uppercase text-white/50">reembolsable</p></div>
-        <div class="caja p-3"><p class="m-0 font-display text-2xl text-ambar md:text-3xl">On-chain</p><p class="m-0 text-xs uppercase text-white/50">cada recuerdo</p></div>
+        <div class="caja p-3"><p class="m-0 font-display text-2xl text-ambar md:text-3xl">En IPFS</p><p class="m-0 text-xs uppercase text-white/50">cada recuerdo</p></div>
       </div>
       <ol class="m-0 mt-8 grid list-none gap-6 p-0 md:grid-cols-3">
         {
@@ -101,6 +106,22 @@ const pasos = [
   import { datos } from '../lib/datos';
   import { emitir } from '../lib/eventos';
   import { leerRecuerdo } from '../lib/ipfs';
+  import { formatearUsdc } from '../lib/tipos';
+
+  const heroCaja = document.querySelector('[data-hero-campania]') as HTMLElement;
+  const heroTexto = (sel: string, valor: string) => ((heroCaja.querySelector(sel) as HTMLElement).textContent = valor);
+
+  async function cargarHero() {
+    const c = await datos.obtenerCampania();
+    const porcentaje = c.meta > 0n ? Math.min(100, Number((c.recaudado * 100n) / c.meta)) : 0;
+    heroTexto('[data-hero-recaudado]', formatearUsdc(c.recaudado));
+    heroTexto('[data-hero-meta]', formatearUsdc(c.meta));
+    heroTexto('[data-hero-porcentaje]', String(porcentaje));
+    (heroCaja.querySelector('[data-hero-relleno]') as HTMLElement).style.width = `${porcentaje}%`;
+    heroCaja.hidden = false;
+  }
+
+  cargarHero().catch(() => {});
 
   const COLORES = ['text-rosa', 'text-violeta', 'text-ambar'];
   const contenedor = document.querySelector('.recientes') as HTMLElement;

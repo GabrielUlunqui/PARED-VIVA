@@ -3,15 +3,17 @@ interface Props {
   id?: string;
   valor?: number;
   alto?: 'normal' | 'grande';
+  etiqueta?: string;
 }
 
-const { id, valor = 0, alto = 'normal' } = Astro.props;
+const { id, valor = 0, alto = 'normal', etiqueta = 'Progreso de la campaña' } = Astro.props;
 ---
 
 <div
   class:list={['barra barra-ladrillos', { 'h-6': alto === 'grande' }]}
   id={id}
   role="progressbar"
+  aria-label={etiqueta}
   aria-valuemin="0"
   aria-valuemax="100"
   aria-valuenow={valor}

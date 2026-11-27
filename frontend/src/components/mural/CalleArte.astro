@@ -28,14 +28,15 @@ const obras = [
 </section>
 
 <script>
-  import * as THREE from 'three';
+  import type { Color, Quaternion, Vector3 } from 'three';
   import obras from './obras.json';
 
+  type Tres = typeof import('three');
   type Clave = 'mona' | 'noche' | 'mural';
   interface Pose {
-    p: THREE.Vector3;
-    q: THREE.Quaternion;
-    c: THREE.Color;
+    p: Vector3;
+    q: Quaternion;
+    c: Color;
   }
 
   const INFO: Record<Clave, { titulo: string; autor: string }> = {
@@ -54,7 +55,7 @@ const obras = [
   const PALETA = ['#ff3d9a', '#8b5cf6', '#ffb547', '#38e1ff', '#c6f432'];
   const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  function iniciar(seccion: HTMLElement) {
+  function iniciar(seccion: HTMLElement, THREE: Tres) {
     const canvas = seccion.querySelector('canvas.escena') as HTMLCanvasElement;
     const titulo = seccion.querySelector('.obra-titulo') as HTMLElement;
     const autor = seccion.querySelector('.obra-autor') as HTMLElement;
@@ -186,6 +187,7 @@ const obras = [
       b.addEventListener('click', () => {
         automatico = false;
         formar(b.dataset.obra as Clave);
+        despertar();
       }),
     );
 
@@ -209,7 +211,10 @@ const obras = [
       camara.aspect = innerWidth / innerHeight;
       camara.updateProjectionMatrix();
     }
-    addEventListener('resize', redimensionar);
+    addEventListener('resize', () => {
+      redimensionar();
+      despertar();
+    });
     redimensionar();
     camara.position.copy(recorrido[0].p);
 
@@ -217,9 +222,12 @@ const obras = [
     const giro = new THREE.Quaternion();
     const euler = new THREE.Euler();
     const suave = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
-    formar('mona');
+    formar(quieto ? 'mural' : 'mona');
 
-    renderer.setAnimationLoop(() => {
+    // Con movimiento reducido se renderizan unos pocos cuadros (la formación es instantánea)
+    // y se frena el loop; `despertar` lo reactiva ante resize o cambio de obra.
+    let restantes = quieto ? 6 : 0;
+    function paso() {
       const ahora = performance.now();
       if (automatico && ahora - comienzo > DURACION_TOTAL + PAUSA) formar(ORDEN[(ORDEN.indexOf(obraActual) + 1) % ORDEN.length]);
       avance.style.width = `${Math.min(100, ((ahora - comienzo) / DURACION_TOTAL) * 100)}%`;
@@ -258,10 +266,25 @@ const obras = [
       lampara.material.color.setHSL(0.1, 1, Math.random() > 0.98 ? 0.4 : 0.72);
       neon.intensity = 260 + Math.sin(ahora / 300) * 40;
       renderer.render(escena, camara);
-    });
+      if (quieto && --restantes <= 0) renderer.setAnimationLoop(null);
+    }
+
+    function despertar() {
+      if (!quieto) return;
+      restantes = 6;
+      renderer.setAnimationLoop(paso);
+    }
+
+    renderer.setAnimationLoop(paso);
   }
 
-  document.querySelectorAll<HTMLElement>('.calle-arte').forEach(iniciar);
+  async function arrancar() {
+    const THREE = await import('three');
+    document.querySelectorAll<HTMLElement>('.calle-arte').forEach((s) => iniciar(s, THREE));
+  }
+
+  if ('requestIdleCallback' in window) requestIdleCallback(() => arrancar(), { timeout: 1500 });
+  else setTimeout(arrancar, 250);
 </script>
 
 <style>

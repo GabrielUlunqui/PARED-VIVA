@@ -1,8 +1,62 @@
 ---
 import Base from '../layouts/Base.astro';
+import { CONTRATOS, RED } from '../contracts/config';
+
+const urlFondo = `${RED.explorador}/contract/${CONTRATOS.fondoBarrio}`;
+
+const bloques = [
+  {
+    numero: '01',
+    titulo: 'Un reconocimiento, no una inversión',
+    texto: 'Ser guardián es un reconocimiento simbólico e intransferible: queda registrado para siempre que ayudaste a devolverle la vida a la pared. No es una inversión ni ofrece rendimiento; es memoria y pertenencia.',
+    color: 'text-rosa',
+  },
+  {
+    numero: '02',
+    titulo: 'La próxima pared se elige en comunidad',
+    texto: 'Los guardianes proponen y priorizan cuál será la próxima pared a restaurar. Es una consulta comunitaria no vinculante: la decisión final siempre depende del dueño de la pared, el artista, el restaurador y el municipio.',
+    color: 'text-violeta',
+  },
+  {
+    numero: '03',
+    titulo: 'Láminas con reparto automático',
+    texto: 'Restaurado el mural, se venden láminas de su imagen. Cada venta se reparte en el acto entre el artista y el fondo de mantenimiento del barrio, sin intermediarios y todo on-chain.',
+    color: 'text-ambar',
+  },
+];
 ---
 
 <Base titulo="Guardianes">
-  <h1>Guardianes</h1>
-  <p>TODO [B8]: propuestas de próxima pared, votación y compra de láminas (fase 2).</p>
+  <p class="etiqueta m-0">Fase 2 · Después de la restauración</p>
+  <h1>Los guardianes <span class="neon text-rosa">de la pared</span></h1>
+  <p class="m-0 mt-4 max-w-2xl text-white/80">
+    Cada aporte adopta un ladrillo y deja un recuerdo. Quienes aportan se vuelven <strong class="text-white">guardianes</strong> del mural: cuidan su memoria y ayudan a elegir el futuro de las paredes del barrio.
+  </p>
+
+  <ol class="m-0 mt-10 grid list-none gap-6 p-0 md:grid-cols-3">
+    {
+      bloques.map((b) => (
+        <li class="cartel">
+          <p class:list={['neon m-0 font-display text-6xl', b.color]}>{b.numero}</p>
+          <h2 class="m-0 mt-2 text-2xl">{b.titulo}</h2>
+          <p class="m-0 mt-2 text-white/70">{b.texto}</p>
+        </li>
+      ))
+    }
+  </ol>
+
+  <section class="cartel mt-10">
+    <p class="etiqueta m-0">El fondo ya existe</p>
+    <h2 class="m-0 mt-2 text-3xl">El fondo del barrio, <span class="neon text-ambar">on-chain</span></h2>
+    <p class="m-0 mt-3 max-w-2xl text-white/70">
+      El contrato del fondo de mantenimiento ya está desplegado en Stellar testnet y recibe el excedente de la campaña y el reparto de las láminas. Podés verlo y auditarlo en el explorador:
+    </p>
+    <a href={urlFondo} target="_blank" rel="noopener" class="boton-neon mt-4 inline-block px-4 py-2 text-sm font-bold uppercase tracking-wider no-underline">
+      Ver el fondo en stellar.expert
+    </a>
+  </section>
+
+  <p class="m-0 mt-10 text-sm text-white/50">
+    La votación de la próxima pared y la compra de láminas se hacen hoy directamente contra el contrato; la interfaz web de guardianes llega después de la hackathon.
+  </p>
 </Base>

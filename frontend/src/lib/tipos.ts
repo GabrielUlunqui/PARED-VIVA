@@ -55,8 +55,13 @@ export function parsearUsdc(texto: string): bigint | null {
   return BigInt(match[1]) * UNIDAD_USDC + BigInt((match[2] ?? '').padEnd(DECIMALES_USDC, '0'));
 }
 
+export function formatearMonto(monto: bigint, codigo: string, decimales = 2): string {
+  const entero = (monto / UNIDAD_USDC).toLocaleString('es-AR');
+  const fraccion = (monto % UNIDAD_USDC).toString().padStart(DECIMALES_USDC, '0').slice(0, decimales);
+  const numero = decimales ? `${entero},${fraccion}` : entero;
+  return codigo ? `${numero} ${codigo}` : numero;
+}
+
 export function formatearUsdc(monto: bigint): string {
-  const entero = monto / UNIDAD_USDC;
-  const decimales = (monto % UNIDAD_USDC).toString().padStart(DECIMALES_USDC, '0').slice(0, 2);
-  return `${entero.toLocaleString('es-AR')},${decimales} USDC`;
+  return formatearMonto(monto, 'USDC');
 }

@@ -57,6 +57,7 @@ async function pinear(ruta: string, cuerpo: BodyInit, jwt: string, json = false)
 }
 
 export const POST: APIRoute = async ({ request, clientAddress }) => {
+  if (!PINATA_JWT) return responder({ error: 'La subida a IPFS no está configurada en el servidor (falta PINATA_JWT).' }, 503);
   if (limiteSuperado(clientAddress)) {
     return responder({ error: 'Demasiadas subidas en poco tiempo. Esperá unos minutos y probá de nuevo.' }, 429);
   }
@@ -81,7 +82,6 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   if (imagen && !(await esImagenReal(imagen))) {
     return responder({ error: 'El archivo no es una imagen JPG, PNG o WEBP válida.' }, 400);
   }
-  if (!PINATA_JWT) return responder({ error: 'La subida a IPFS no está configurada en el servidor (falta PINATA_JWT).' }, 503);
 
   try {
     let imagenCid: string | undefined;

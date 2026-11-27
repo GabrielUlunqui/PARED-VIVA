@@ -138,9 +138,15 @@ stellar contract asset deploy \
 # 5) Sembrar 900 USDC con 18 recuerdos de ejemplo.
 ./scripts/sembrar-demo.sh
 
-# 6) Sumar 4 × 24 USDC para dejar 999/1.000 en un redeploy fresco.
-#    Los ladrillos 113, 232, 351 y 470 no están en la lista dispersa del script.
+# 6) Sumar 99 USDC para dejar 999/1.000 en un redeploy fresco:
+#    3 × 1 USDC en los ladrillos 597-599 y 4 × 24 USDC en 113, 232, 351 y 470.
+#    Esos ladrillos no están en la lista dispersa del script.
 VECINO=$(stellar keys address vecino)
+for ladrillo in 597 598 599; do
+  stellar contract invoke --id pared-viva --source-account vecino --network testnet \
+    -- donar --donante "$VECINO" --ladrillo_id "$ladrillo" \
+    --recuerdo_cid "mock-prueba-$ladrillo" --monto 10000000
+done
 N=19
 for ladrillo in 113 232 351 470; do
   stellar contract invoke --id pared-viva --source-account vecino --network testnet \

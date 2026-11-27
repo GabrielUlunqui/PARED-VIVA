@@ -4,9 +4,8 @@ export const RED = {
   explorador: 'https://stellar.expert/explorer/testnet',
 };
 
-// TODO [A1] [A2]: completar con los IDs C... después de desplegar en testnet.
 export const CONTRATOS = {
-  paredViva: '',
-  usdc: '',
+  paredViva: 'CD3ZVQAQKTT3F3OW6DL6LQA4CDD4IEWGHRG4ZZDZJZTXQRJ5DIZXC6RE',
+  usdc: 'CAKOGDRIVNTTJMVT5YEI5R5EY5FOBGPJSO4QOEFNHIZZBHYH7XQNSKDP',
   fondoBarrio: '',
 };

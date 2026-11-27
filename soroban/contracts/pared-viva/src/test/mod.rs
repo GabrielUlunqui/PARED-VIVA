@@ -1,4 +1,5 @@
 // Un archivo de tests por tarea; `comun` tiene el escenario compartido.
+mod auditoria;
 mod comun;
 mod donar; // [A3]
 mod hitos; // [A4]

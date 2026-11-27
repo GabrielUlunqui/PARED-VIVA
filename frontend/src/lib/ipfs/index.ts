@@ -54,7 +54,7 @@ export async function subirRecuerdo(texto: string, imagen?: File, alias?: string
 }
 
 function recuerdoEjemplo(cid: string): Recuerdo {
-  const numero = Number(cid.split('-')[1]) || 0;
+  const numero = [...cid].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0);
   const ejemplo = RECUERDOS_EJEMPLO[numero % RECUERDOS_EJEMPLO.length];
   return { version: 1, ...ejemplo, creado: new Date().toISOString() };
 }

@@ -41,6 +41,14 @@ const MONTO_INICIAL = '5';
       <input type="text" name="alias" maxlength="40" placeholder="Anónimo" />
     </label>
 
+    <label class="consentimiento">
+      <input type="checkbox" name="consentimiento" required />
+      <span>
+        Entiendo que mi recuerdo, la foto y el alias quedan públicos en IPFS y vinculados a la red Stellar, y que no se
+        pueden borrar. No subo fotos de menores, datos sensibles ni contenido de terceros sin permiso.
+      </span>
+    </label>
+
     <p class="estado" data-donar-estado role="status" hidden></p>
     <p class="error" data-donar-error role="alert" hidden></p>
 
@@ -77,6 +85,7 @@ const MONTO_INICIAL = '5';
   const imagen = form.elements.namedItem('imagen') as HTMLInputElement;
   const alias = form.elements.namedItem('alias') as HTMLInputElement;
   const montoInput = form.elements.namedItem('monto') as HTMLInputElement;
+  const consentimiento = form.elements.namedItem('consentimiento') as HTMLInputElement;
   const sugeridos = modal.querySelectorAll<HTMLButtonElement>('[data-monto]');
   const enviar = $<HTMLButtonElement>('[data-donar-enviar]');
   const estado = $('[data-donar-estado]');
@@ -125,6 +134,7 @@ const MONTO_INICIAL = '5';
     const archivo = imagen.files?.[0];
     if (archivo && !TIPOS_IMAGEN.includes(archivo.type)) return 'La foto tiene que ser JPG, PNG o WebP.';
     if (archivo && archivo.size > MAX_IMAGEN_BYTES) return 'La foto no puede superar los 2 MB.';
+    if (!consentimiento.checked) return 'Confirmá que entendés que tu recuerdo queda público y no se puede borrar.';
     return null;
   }
 
@@ -215,6 +225,16 @@ const MONTO_INICIAL = '5';
     padding: 0.5rem;
     border: 1px solid var(--color-borde);
     border-radius: var(--radio);
+  }
+  .consentimiento {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-weight: 400;
+    font-size: 0.875rem;
+  }
+  .consentimiento input {
+    margin-top: 0.2rem;
   }
   .contador {
     align-self: flex-end;

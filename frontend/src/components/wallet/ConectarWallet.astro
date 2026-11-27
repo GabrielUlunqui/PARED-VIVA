@@ -1,19 +1,86 @@
-<button id="conectar-wallet" class="conectar-wallet" type="button">Conectar wallet</button>
+<div class="wallet" id="wallet">
+  <button id="conectar-wallet" class="conectar-wallet" type="button">Conectar wallet</button>
+  <span id="wallet-aviso" class="aviso" role="status" hidden></span>
+</div>
 
 <script>
   import { emitir } from '../../lib/eventos';
-  import { abreviar, conectar } from '../../lib/stellar/wallet';
   import { traducirError } from '../../lib/stellar/errores';
+  import { abreviar, conectar, desconectar, direccionActual, observarCambios, redCorrecta } from '../../lib/stellar/wallet';
 
-  // TODO [B2]: restaurar la conexión guardada y mostrar estado de red.
   const boton = document.getElementById('conectar-wallet') as HTMLButtonElement;
+  const aviso = document.getElementById('wallet-aviso') as HTMLSpanElement;
+  let direccion: string | null = null;
+
+  function mostrarAviso(texto: string | null) {
+    aviso.hidden = !texto;
+    aviso.textContent = texto ?? '';
+  }
+
+  function actualizar(nueva: string | null, redOk = true) {
+    const cambio = nueva !== direccion;
+    direccion = nueva;
+    boton.textContent = direccion ? abreviar(direccion) : 'Conectar wallet';
+    boton.title = direccion ? `${direccion}\nClic para desconectar` : '';
+    boton.classList.toggle('conectada', !!direccion);
+    mostrarAviso(direccion && !redOk ? 'Cambiá Freighter a Testnet' : null);
+    if (cambio) emitir('pv:wallet-cambiada', { direccion });
+  }
+
   boton.addEventListener('click', async () => {
+    if (direccion) {
+      desconectar();
+      actualizar(null);
+      return;
+    }
+    boton.disabled = true;
     try {
-      const direccion = await conectar();
-      boton.textContent = abreviar(direccion);
-      emitir('pv:wallet-cambiada', { direccion });
+      actualizar(await conectar());
     } catch (e) {
-      alert(e instanceof Error && e.message.startsWith('TODO') ? e.message : traducirError(e));
+      mostrarAviso(traducirError(e));
+    } finally {
+      boton.disabled = false;
     }
   });
+
+  async function iniciar() {
+    const guardada = await direccionActual();
+    if (guardada) actualizar(guardada, await redCorrecta());
+    observarCambios((nueva, redOk) => actualizar(nueva, redOk));
+  }
+
+  iniciar().catch(() => actualizar(null));
 </script>
+
+<style>
+  .wallet {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+  }
+  .conectar-wallet {
+    border: 1px solid var(--color-secundario);
+    background: var(--color-secundario);
+    color: white;
+    border-radius: var(--radio);
+    padding: 0.5rem 1rem;
+    font: inherit;
+    cursor: pointer;
+  }
+  .conectar-wallet.conectada {
+    background: transparent;
+    color: var(--color-secundario);
+    font-family: ui-monospace, monospace;
+  }
+  .conectar-wallet:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+  .aviso {
+    font-size: 0.8rem;
+    color: var(--color-primario);
+    max-width: 260px;
+    text-align: right;
+  }
+</style>

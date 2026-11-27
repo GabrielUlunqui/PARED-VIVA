@@ -1,4 +1,5 @@
 import type { Recuerdo } from '../tipos';
+import { ErrorNegocio } from '../stellar/errores';
 
 export const MAX_IMAGEN_BYTES = 2 * 1024 * 1024;
 export const MAX_TEXTO = 280;
@@ -35,7 +36,7 @@ export function validarRecuerdo(texto: string, imagen?: File | null, alias?: str
 
 export async function subirRecuerdo(texto: string, imagen?: File, alias?: string): Promise<string> {
   const error = validarRecuerdo(texto, imagen, alias);
-  if (error) throw new Error(error);
+  if (error) throw new ErrorNegocio(error);
   const formulario = new FormData();
   formulario.set('texto', texto.trim());
   if (alias?.trim()) formulario.set('alias', alias.trim());
@@ -45,11 +46,11 @@ export async function subirRecuerdo(texto: string, imagen?: File, alias?: string
   try {
     res = await fetch('/api/subir', { method: 'POST', body: formulario });
   } catch {
-    throw new Error('No hay conexión para guardar el recuerdo. Probá de nuevo.');
+    throw new ErrorNegocio('No hay conexión para guardar el recuerdo. Probá de nuevo.');
   }
   if (res.status === 503 && USAR_MOCK) return `mock-${Date.now()}-${texto.length}`;
   const cuerpo = (await res.json().catch(() => ({}))) as { cid?: string; error?: string };
-  if (!res.ok || !cuerpo.cid) throw new Error(cuerpo.error ?? 'No se pudo guardar el recuerdo en IPFS.');
+  if (!res.ok || !cuerpo.cid) throw new ErrorNegocio(cuerpo.error ?? 'No se pudo guardar el recuerdo en IPFS.');
   return cuerpo.cid;
 }
 

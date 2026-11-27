@@ -3,27 +3,51 @@ import BarraProgreso from '../ui/BarraProgreso.astro';
 import CuentaRegresiva from '../ui/CuentaRegresiva.astro';
 ---
 
-<section class="progreso">
-  <p><strong data-recaudado>—</strong> de <span data-meta>—</span></p>
-  <BarraProgreso id="barra-progreso" />
-  <p>Estado: <span data-estado>—</span> · Termina en <CuentaRegresiva id="cuenta-campania" /></p>
+<section class="progreso cartel !px-6 !pb-6 !pt-10 md:!px-8 md:!pb-8">
+  <span class="estado boton-neon inline-flex items-center gap-2 px-3 py-1 text-xs font-bold uppercase tracking-wider" data-estado-caja>
+    <span class="punto h-2 w-2 bg-current"></span><span data-estado>Cargando…</span>
+  </span>
+  <p class="m-0 mt-5 font-display text-6xl leading-none md:text-7xl">
+    <span data-recaudado>—</span><span class="text-2xl text-white/40 md:text-3xl"> / <span data-meta>—</span></span>
+  </p>
+  <p class="m-0 mt-1 text-sm text-white/60"><strong class="text-white" data-ladrillos>—</strong> ladrillos adoptados · <span data-porcentaje>0</span>% de la meta</p>
+  <div class="mt-4"><BarraProgreso id="barra-progreso" alto="grande" /></div>
+  <p class="etiqueta m-0 mt-6 mb-2">Termina en</p>
+  <CuentaRegresiva id="cuenta-campania" />
+  <slot />
 </section>
 
 <script>
   import { datos } from '../../lib/datos';
   import { escuchar } from '../../lib/eventos';
-  import { formatearUsdc } from '../../lib/tipos';
+  import { formatearUsdc, type EstadoCampania } from '../../lib/tipos';
+
+  const ESTADOS: Record<EstadoCampania, { texto: string; color: string }> = {
+    Activa: { texto: 'Campaña activa', color: 'text-rosa' },
+    Financiada: { texto: 'Meta alcanzada', color: 'text-ambar' },
+    Completada: { texto: 'Mural restaurado', color: 'text-celeste' },
+    Fallida: { texto: 'No se llegó a la meta', color: 'text-white/60' },
+  };
 
   const raiz = document.querySelector('.progreso') as HTMLElement;
-  const relleno = document.querySelector('#barra-progreso .relleno') as HTMLElement;
+  const barra = document.getElementById('barra-progreso') as HTMLElement;
+  const relleno = barra.querySelector('.relleno') as HTMLElement;
+  const caja = raiz.querySelector('[data-estado-caja]') as HTMLElement;
+  const texto = (selector: string, valor: string) => ((raiz.querySelector(selector) as HTMLElement).textContent = valor);
 
   async function actualizar() {
-    const c = await datos.obtenerCampania();
-    const porcentaje = Math.min(100, Number((c.recaudado * 100n) / c.meta));
-    raiz.querySelector('[data-recaudado]')!.textContent = formatearUsdc(c.recaudado);
-    raiz.querySelector('[data-meta]')!.textContent = formatearUsdc(c.meta);
-    raiz.querySelector('[data-estado]')!.textContent = c.estado;
+    const [c, ladrillos] = await Promise.all([datos.obtenerCampania(), datos.obtenerLadrillos()]);
+    const porcentaje = c.meta > 0n ? Math.min(100, Number((c.recaudado * 100n) / c.meta)) : 0;
+    const estado = ESTADOS[c.estado] ?? { texto: c.estado, color: 'text-rosa' };
+    texto('[data-recaudado]', formatearUsdc(c.recaudado).replace(' USDC', ''));
+    texto('[data-meta]', formatearUsdc(c.meta));
+    texto('[data-estado]', estado.texto);
+    texto('[data-ladrillos]', `${ladrillos.length} de ${c.filas * c.columnas}`);
+    texto('[data-porcentaje]', String(porcentaje));
+    caja.className = caja.className.replace(/\btext-\S+/g, '').trim() + ` ${estado.color}`;
+    (raiz.querySelector('.punto') as HTMLElement).classList.toggle('animate-ping', c.estado === 'Activa');
     (document.getElementById('cuenta-campania') as HTMLElement).dataset.hasta = String(c.fechaLimite);
+    barra.setAttribute('aria-valuenow', String(porcentaje));
     relleno.style.width = `${porcentaje}%`;
   }
 
@@ -31,9 +55,3 @@ import CuentaRegresiva from '../ui/CuentaRegresiva.astro';
   datos.suscribirDonaciones(actualizar);
   escuchar('pv:donacion-confirmada', actualizar);
 </script>
-
-<style>
-  .progreso {
-    margin: var(--espacio) 0;
-  }
-</style>

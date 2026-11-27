@@ -2,5 +2,6 @@
 mod comun;
 mod donar; // [A3]
 mod hitos; // [A4]
+mod integracion; // [A6]
 mod lecturas; // [A1]
 mod reembolso; // [A5]

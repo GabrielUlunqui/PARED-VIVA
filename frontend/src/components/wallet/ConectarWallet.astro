@@ -4,7 +4,7 @@
 </div>
 
 <script>
-  import { emitir } from '../../lib/eventos';
+  import { emitir, escuchar } from '../../lib/eventos';
   import { traducirError } from '../../lib/stellar/errores';
   import { abreviar, conectar, desconectar, direccionActual, observarCambios, redCorrecta } from '../../lib/stellar/wallet';
 
@@ -17,8 +17,8 @@
     aviso.textContent = texto ?? '';
   }
 
-  function actualizar(nueva: string | null, redOk = true) {
-    const cambio = nueva !== direccion;
+  function actualizar(nueva: string | null, redOk = true, notificar = true) {
+    const cambio = notificar && nueva !== direccion;
     direccion = nueva;
     boton.textContent = direccion ? abreviar(direccion) : 'Conectar wallet';
     boton.title = direccion ? `${direccion}\nClic para desconectar` : '';
@@ -47,6 +47,9 @@
     const guardada = await direccionActual();
     if (guardada) actualizar(guardada, await redCorrecta());
     observarCambios((nueva, redOk) => actualizar(nueva, redOk));
+    escuchar('pv:wallet-cambiada', ({ direccion: otra }) => {
+      if (otra !== direccion) actualizar(otra, true, false);
+    });
   }
 
   iniciar().catch(() => actualizar(null));

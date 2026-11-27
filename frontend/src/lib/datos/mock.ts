@@ -50,6 +50,14 @@ function campania(): Campania {
   };
 }
 
+export function registrarDonacionMock(id: number, donante: string, recuerdoCid: string): Ladrillo {
+  if (ladrillos.has(id)) throw new Error('Error(Contract, #2)');
+  if (id < 0 || id >= FILAS * COLUMNAS) throw new Error('Error(Contract, #3)');
+  const nuevo: Ladrillo = { id, donante, monto: PRECIO, recuerdoCid, fecha: Math.floor(Date.now() / 1000) };
+  ladrillos.set(id, nuevo);
+  return nuevo;
+}
+
 export const fuenteMock: FuenteDatos = {
   async obtenerCampania() {
     return campania();

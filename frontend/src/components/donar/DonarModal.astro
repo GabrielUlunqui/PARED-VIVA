@@ -75,7 +75,7 @@ const MONTO_INICIAL = '5';
   import { donar, urlTransaccion, type EtapaTx } from '../../lib/stellar/transacciones';
   import { conectarYAvisar } from '../../lib/stellar/sesion';
   import { direccionActual } from '../../lib/stellar/wallet';
-  import { formatearUsdc, parsearUsdc } from '../../lib/tipos';
+  import { formatearUsdc, parsearUsdc, usdcATexto } from '../../lib/tipos';
 
   const modal = document.getElementById('modal-donar') as HTMLDialogElement;
   const $ = <T extends HTMLElement>(sel: string) => modal.querySelector(sel) as T;
@@ -115,8 +115,15 @@ const MONTO_INICIAL = '5';
     sugeridos.forEach((b) => b.classList.toggle('activo', parsearUsdc(b.dataset.monto!) === monto));
   }
 
+  function aplicarMinimo() {
+    sugeridos.forEach((b) => (b.hidden = parsearUsdc(b.dataset.monto!)! < minimo));
+    const inicial = montoActual();
+    if (inicial === null || inicial < minimo) montoInput.value = usdcATexto(minimo);
+  }
+
   function reiniciar() {
     form.reset();
+    aplicarMinimo();
     form.hidden = false;
     exito.hidden = true;
     $('[data-donar-contador]').textContent = '0';

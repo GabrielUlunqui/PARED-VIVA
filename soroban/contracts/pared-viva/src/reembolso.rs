@@ -19,6 +19,7 @@ pub fn reembolsar(env: &Env, donante: Address) -> Result<i128, Error> {
     }
 
     almacen::guardar(env, &clave, &0i128);
+    almacen::guardar(env, &Clave::Guardian(donante.clone()), &false);
     almacen::token(env, &config).transfer(&env.current_contract_address(), &donante, &aporte);
     Reembolso { donante, monto: aporte }.publish(env);
     Ok(aporte)

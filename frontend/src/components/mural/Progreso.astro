@@ -35,23 +35,38 @@ import CuentaRegresiva from '../ui/CuentaRegresiva.astro';
   const caja = raiz.querySelector('[data-estado-caja]') as HTMLElement;
   const texto = (selector: string, valor: string) => ((raiz.querySelector(selector) as HTMLElement).textContent = valor);
 
-  async function actualizar() {
-    const [c, ladrillos] = await Promise.all([datos.obtenerCampania(), datos.obtenerLadrillos()]);
-    const porcentaje = c.meta > 0n ? Math.min(100, Number((c.recaudado * 100n) / c.meta)) : 0;
-    const estado = ESTADOS[c.estado] ?? { texto: c.estado, color: 'text-rosa' };
-    texto('[data-recaudado]', formatearUsdc(c.recaudado).replace(' USDC', ''));
-    texto('[data-meta]', formatearUsdc(c.meta));
-    texto('[data-estado]', estado.texto);
-    texto('[data-ladrillos]', `${ladrillos.length} de ${c.filas * c.columnas}`);
-    texto('[data-porcentaje]', String(porcentaje));
-    caja.className = caja.className.replace(/\btext-\S+/g, '').trim() + ` ${estado.color}`;
-    (raiz.querySelector('.punto') as HTMLElement).classList.toggle('animate-ping', c.estado === 'Activa');
-    (document.getElementById('cuenta-campania') as HTMLElement).dataset.hasta = String(c.fechaLimite);
-    barra.setAttribute('aria-valuenow', String(porcentaje));
-    relleno.style.width = `${porcentaje}%`;
+  let espera = 2000;
+  let temporizador: ReturnType<typeof setTimeout> | undefined;
+
+  function reintentar() {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(() => void actualizar(), espera);
+    espera = Math.min(espera * 2, 30000);
   }
 
-  actualizar();
-  datos.suscribirDonaciones(actualizar);
-  escuchar('pv:donacion-confirmada', actualizar);
+  async function actualizar() {
+    try {
+      const [c, ladrillos] = await Promise.all([datos.obtenerCampania(), datos.obtenerLadrillos()]);
+      const porcentaje = c.meta > 0n ? Math.min(100, Number((c.recaudado * 100n) / c.meta)) : 0;
+      const estado = ESTADOS[c.estado] ?? { texto: c.estado, color: 'text-rosa' };
+      texto('[data-recaudado]', formatearUsdc(c.recaudado).replace(' USDC', ''));
+      texto('[data-meta]', formatearUsdc(c.meta));
+      texto('[data-estado]', estado.texto);
+      texto('[data-ladrillos]', `${ladrillos.length} de ${c.filas * c.columnas}`);
+      texto('[data-porcentaje]', String(porcentaje));
+      caja.className = caja.className.replace(/\btext-\S+/g, '').trim() + ` ${estado.color}`;
+      (raiz.querySelector('.punto') as HTMLElement).classList.toggle('animate-ping', c.estado === 'Activa');
+      (document.getElementById('cuenta-campania') as HTMLElement).dataset.hasta = String(c.fechaLimite);
+      barra.setAttribute('aria-valuenow', String(porcentaje));
+      relleno.style.width = `${porcentaje}%`;
+      espera = 2000;
+    } catch {
+      texto('[data-estado]', 'No pudimos leer la campaña, reintentando…');
+      reintentar();
+    }
+  }
+
+  void actualizar();
+  datos.suscribirDonaciones(() => void actualizar());
+  escuchar('pv:donacion-confirmada', () => void actualizar());
 </script>

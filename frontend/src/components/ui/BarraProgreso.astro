@@ -2,25 +2,19 @@
 interface Props {
   id?: string;
   valor?: number;
+  alto?: 'normal' | 'grande';
 }
 
-const { id, valor = 0 } = Astro.props;
+const { id, valor = 0, alto = 'normal' } = Astro.props;
 ---
 
-<div class="barra" id={id} role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={valor}>
+<div
+  class:list={['barra barra-ladrillos', { 'h-6': alto === 'grande' }]}
+  id={id}
+  role="progressbar"
+  aria-valuemin="0"
+  aria-valuemax="100"
+  aria-valuenow={valor}
+>
   <div class="relleno" style={`width: ${valor}%`}></div>
 </div>
-
-<style>
-  .barra {
-    height: 12px;
-    background: var(--color-libre);
-    border-radius: 999px;
-    overflow: hidden;
-  }
-  .relleno {
-    height: 100%;
-    background: var(--color-primario);
-    transition: width 0.4s ease;
-  }
-</style>

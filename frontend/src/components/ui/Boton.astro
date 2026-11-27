@@ -8,24 +8,12 @@ interface Props extends HTMLAttributes<'button'> {
 const { variante = 'primario', type = 'button', class: clase, ...resto } = Astro.props;
 ---
 
-<button type={type} class:list={['boton', variante, clase]} {...resto}><slot /></button>
-
-<style>
-  .boton {
-    border: none;
-    border-radius: var(--radio);
-    padding: 0.6rem 1.2rem;
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .primario {
-    background: var(--color-primario);
-    color: white;
-  }
-  .secundario {
-    background: transparent;
-    border: 1px solid var(--color-secundario);
-    color: var(--color-secundario);
-  }
-</style>
+<button
+  type={type}
+  class:list={[
+    'boton cursor-pointer px-5 py-3 font-sans text-sm font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60',
+    variante === 'primario' ? 'boton-ladrillo' : 'boton-neon',
+    clase,
+  ]}
+  {...resto}><slot /></button
+>

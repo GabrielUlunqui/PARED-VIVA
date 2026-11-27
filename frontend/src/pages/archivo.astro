@@ -2,39 +2,104 @@
 import Base from '../layouts/Base.astro';
 import Tarjeta from '../components/ui/Tarjeta.astro';
 import { datos } from '../lib/datos';
-import { leerRecuerdo } from '../lib/ipfs';
+import { leerRecuerdo, urlGateway } from '../lib/ipfs';
+import type { Ladrillo, Recuerdo } from '../lib/tipos';
 
 export const prerender = false;
 
-// TODO [C5]: galería definitiva (imágenes, paginación, estados vacíos y de carga).
-const ladrillos = (await datos.obtenerLadrillos()).sort((a, b) => b.fecha - a.fecha);
-const recuerdos = await Promise.all(ladrillos.slice(0, 24).map(async (l) => ({ l, r: await leerRecuerdo(l.recuerdoCid) })));
+const POR_PAGINA = 12;
+const COLORES = ['text-rosa', 'text-violeta', 'text-ambar', 'text-celeste'];
+
+let ladrillos: Ladrillo[] = [];
+let fallo = false;
+try {
+  ladrillos = (await datos.obtenerLadrillos()).sort((a, b) => b.fecha - a.fecha);
+} catch {
+  fallo = true;
+}
+
+const paginas = Math.max(1, Math.ceil(ladrillos.length / POR_PAGINA));
+const pedida = Number(Astro.url.searchParams.get('pagina') ?? 1);
+const pagina = Number.isInteger(pedida) ? Math.min(Math.max(1, pedida), paginas) : 1;
+const visibles = ladrillos.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
+const recuerdos: { l: Ladrillo; r: Recuerdo | null }[] = await Promise.all(
+  visibles.map(async (l) => ({ l, r: await leerRecuerdo(l.recuerdoCid).catch(() => null) })),
+);
+const fecha = (s: number) => new Date(s * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
 ---
 
 <Base titulo="Archivo">
-  <h1>Archivo de la memoria</h1>
-  <div class="galeria">
+  <div class="mx-auto max-w-6xl">
+    <p class="etiqueta m-0">El archivo</p>
+    <h1 class="m-0">Archivo de <span class="neon text-ambar">la memoria</span></h1>
+    <p class="m-0 mt-3 max-w-2xl text-white/70">
+      Cada ladrillo adoptado guarda un recuerdo del barrio. Están ordenados del más nuevo al más viejo y quedan anclados en la red, así nadie
+      los puede cambiar.
+    </p>
+    {ladrillos.length > 0 && <p class="m-0 mt-2 text-sm text-white/50">{ladrillos.length} recuerdos guardados</p>}
+
     {
-      recuerdos.map(({ l, r }) => (
-        <a href={`/ladrillo/${l.id}`}>
-          <Tarjeta>
-            <p>{r.texto}</p>
-            <small>{r.alias ?? 'Anónimo'} · Ladrillo #{l.id}</small>
-          </Tarjeta>
-        </a>
-      ))
+      fallo ? (
+        <div class="cartel mt-10 text-center">
+          <p class="m-0 font-display text-4xl">No pudimos leer la pared</p>
+          <p class="m-0 mt-2 text-white/60">Hubo un problema al conectar con la red. Probá recargar en unos segundos.</p>
+          <a href="/archivo" class="boton-neon mt-6 inline-block px-4 py-2 text-sm font-bold uppercase no-underline">Reintentar</a>
+        </div>
+      ) : ladrillos.length === 0 ? (
+        <div class="cartel mt-10 text-center">
+          <p class="m-0 font-display text-4xl">La pared todavía está en silencio</p>
+          <p class="m-0 mt-2 text-white/60">Nadie dejó un recuerdo todavía. ¡El primero puede ser el tuyo!</p>
+          <a href="/#mural-seccion" class="boton-ladrillo mt-6 inline-block px-6 py-3 text-sm uppercase tracking-wider no-underline">
+            Adoptá tu ladrillo
+          </a>
+        </div>
+      ) : (
+        <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {recuerdos.map(({ l, r }, i) => (
+            <a href={`/ladrillo/${l.id}`} class="block text-inherit no-underline transition hover:-translate-y-2">
+              <Tarjeta class="flex flex-col">
+                {r?.imagenCid && (
+                  <img src={urlGateway(r.imagenCid)} alt="" loading="lazy" class="mb-4 aspect-[4/3] w-full border-2 border-junta object-cover" />
+                )}
+                <p class="m-0 flex-1 text-lg">{r ? `“${r.texto}”` : 'Este recuerdo no se pudo cargar desde IPFS en este momento.'}</p>
+                <p class:list={['m-0 mt-6 text-sm uppercase tracking-wider', COLORES[i % COLORES.length]]}>
+                  {r?.alias ?? 'Anónimo'} · Ladrillo #{l.id}
+                </p>
+                <p class="m-0 text-xs text-white/40">{fecha(l.fecha)}</p>
+              </Tarjeta>
+            </a>
+          ))}
+        </div>
+      )
+    }
+
+    {
+      paginas > 1 && (
+        <nav class="mt-10 flex flex-wrap items-center justify-center gap-2" aria-label="Páginas del archivo">
+          {pagina > 1 && (
+            <a href={`/archivo?pagina=${pagina - 1}`} class="caja px-4 py-2 text-sm font-bold uppercase text-white no-underline hover:border-ambar">
+              Anterior
+            </a>
+          )}
+          {Array.from({ length: paginas }, (_, i) => i + 1).map((n) => (
+            <a
+              href={`/archivo?pagina=${n}`}
+              aria-current={n === pagina ? 'page' : undefined}
+              class:list={[
+                'caja min-w-10 px-3 py-2 text-center text-sm font-bold no-underline',
+                n === pagina ? '!border-ambar !bg-ambar text-noche' : 'text-white/70 hover:text-white',
+              ]}
+            >
+              {n}
+            </a>
+          ))}
+          {pagina < paginas && (
+            <a href={`/archivo?pagina=${pagina + 1}`} class="caja px-4 py-2 text-sm font-bold uppercase text-white no-underline hover:border-ambar">
+              Siguiente
+            </a>
+          )}
+        </nav>
+      )
     }
   </div>
 </Base>
-
-<style>
-  .galeria {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: var(--espacio);
-  }
-  .galeria a {
-    color: inherit;
-    text-decoration: none;
-  }
-</style>

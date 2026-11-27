@@ -7,10 +7,10 @@ interface Props {
 const { id, titulo } = Astro.props;
 ---
 
-<dialog id={id} class="modal">
-  <header>
-    <h2>{titulo}</h2>
-    <button type="button" class="cerrar" aria-label="Cerrar" data-cerrar-modal>×</button>
+<dialog id={id} class="modal cartel" aria-labelledby={`${id}-titulo`}>
+  <header class="mb-4 flex items-center justify-between gap-4">
+    <h2 id={`${id}-titulo`} class="m-0 text-4xl text-white">{titulo}</h2>
+    <button type="button" class="cerrar caja cursor-pointer px-3 py-1 text-xl text-white/80 hover:text-white" aria-label="Cerrar" data-cerrar-modal>×</button>
   </header>
   <slot />
 </dialog>
@@ -19,31 +19,33 @@ const { id, titulo } = Astro.props;
   document.querySelectorAll<HTMLButtonElement>('[data-cerrar-modal]').forEach((boton) => {
     boton.addEventListener('click', () => boton.closest('dialog')?.close());
   });
+  document.querySelectorAll<HTMLDialogElement>('dialog.modal').forEach((modal) => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.close();
+    });
+  });
 </script>
 
 <style>
   .modal {
-    border: none;
-    border-radius: var(--radio);
-    padding: calc(var(--espacio) * 1.5);
-    max-width: min(90vw, 480px);
+    color: var(--color-texto);
+    max-width: min(92vw, 520px);
     width: 100%;
+    max-height: 90vh;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
   .modal::backdrop {
-    background: rgb(0 0 0 / 0.5);
+    background: rgb(10 8 18 / 0.75);
+    backdrop-filter: blur(3px);
   }
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  .modal[open] {
+    animation: aparecer 0.25s ease-out;
   }
-  h2 {
-    margin: 0;
-  }
-  .cerrar {
-    border: none;
-    background: none;
-    font-size: 1.5rem;
-    cursor: pointer;
+  @keyframes aparecer {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
   }
 </style>

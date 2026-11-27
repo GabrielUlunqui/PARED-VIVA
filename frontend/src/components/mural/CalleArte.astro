@@ -1,0 +1,286 @@
+---
+interface Props {
+  class?: string;
+}
+
+const { class: clase } = Astro.props;
+const obras = [
+  { id: 'mona', texto: 'Mona Lisa' },
+  { id: 'noche', texto: 'Noche estrellada' },
+  { id: 'mural', texto: 'Mural del barrio' },
+];
+---
+
+<section class:list={['calle-arte flex min-h-[640px] items-end', clase]} style="height: 100svh">
+  <canvas class="escena pointer-events-none fixed inset-0 -z-10 h-screen w-screen" aria-hidden="true"></canvas>
+  <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-10 md:flex-row md:items-end md:justify-between md:pb-14">
+    <slot />
+    <div class="cartel w-full max-w-sm shrink-0 !px-5 !pb-5 !pt-8">
+      <p class="etiqueta m-0">Formando</p>
+      <p class="obra-titulo neon m-0 mt-1 font-display text-4xl text-ambar">La Gioconda</p>
+      <p class="obra-autor m-0 text-sm text-white/60">Leonardo da Vinci · 1503</p>
+      <div class="barra-ladrillos mt-3"><div class="obra-avance w-0"></div></div>
+      <div class="mt-4 grid grid-cols-3 gap-2 text-xs font-bold uppercase">
+        {obras.map((o) => <button type="button" data-obra={o.id} class="obra-btn cursor-pointer px-2 py-2">{o.texto}</button>)}
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import * as THREE from 'three';
+  import obras from './obras.json';
+
+  type Clave = 'mona' | 'noche' | 'mural';
+  interface Pose {
+    p: THREE.Vector3;
+    q: THREE.Quaternion;
+    c: THREE.Color;
+  }
+
+  const INFO: Record<Clave, { titulo: string; autor: string }> = {
+    mona: { titulo: 'La Gioconda', autor: 'Leonardo da Vinci · 1503' },
+    noche: { titulo: 'La noche estrellada', autor: 'Vincent van Gogh · 1889' },
+    mural: { titulo: 'Mural del barrio', autor: 'Pintado por los vecinos · 2026' },
+  };
+  const ORDEN: Clave[] = ['mona', 'noche', 'mural'];
+  const DURACION_TOTAL = 13500;
+  const PAUSA = 8000;
+  const PISO = -6;
+  const W = 0.44;
+  const H = 0.22;
+  const CX = 5;
+  const BASE = PISO + 0.6;
+  const PALETA = ['#ff3d9a', '#8b5cf6', '#ffb547', '#38e1ff', '#c6f432'];
+  const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function iniciar(seccion: HTMLElement) {
+    const canvas = seccion.querySelector('canvas.escena') as HTMLCanvasElement;
+    const titulo = seccion.querySelector('.obra-titulo') as HTMLElement;
+    const autor = seccion.querySelector('.obra-autor') as HTMLElement;
+    const avance = seccion.querySelector('.obra-avance') as HTMLElement;
+    const botones = seccion.querySelectorAll<HTMLButtonElement>('[data-obra]');
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    const escena = new THREE.Scene();
+    escena.background = new THREE.Color(0x0a0812);
+    escena.fog = new THREE.FogExp2(0x0a0812, 0.018);
+    const camara = new THREE.PerspectiveCamera(50, 1, 0.1, 300);
+
+    const piso = new THREE.Mesh(
+      new THREE.PlaneGeometry(300, 300),
+      new THREE.MeshStandardMaterial({ color: 0x15121e, roughness: 0.3, metalness: 0.6 }),
+    );
+    piso.rotation.x = -Math.PI / 2;
+    piso.position.y = PISO;
+    const vereda = new THREE.Mesh(new THREE.BoxGeometry(70, 0.4, 8), new THREE.MeshStandardMaterial({ color: 0x24202e, roughness: 0.9 }));
+    vereda.position.set(0, PISO + 0.2, 3);
+    escena.add(piso, vereda);
+
+    escena.add(new THREE.AmbientLight(0xffffff, 1.1));
+    escena.add(new THREE.HemisphereLight(0x8b5cf6, 0x0a0812, 0.5));
+    const frente = new THREE.DirectionalLight(0xffffff, 0.9);
+    frente.position.set(0, 6, 20);
+    const farol = new THREE.SpotLight(0xffb547, 500, 60, Math.PI / 5, 0.5, 1.4);
+    farol.position.set(-16, 12, 8);
+    farol.target.position.set(-6, 0, 0);
+    const poste = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 18), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+    poste.position.set(-16, PISO + 9, 8);
+    const lampara = new THREE.Mesh(new THREE.SphereGeometry(0.5), new THREE.MeshBasicMaterial({ color: 0xffd38a }));
+    lampara.position.set(-16, 12, 8);
+    const neon = new THREE.PointLight(0xff3d9a, 300, 50);
+    neon.position.set(18, 6, 8);
+    escena.add(frente, farol, farol.target, poste, lampara, neon);
+
+    const N = obras.noche.c * obras.noche.r;
+    const ladrillos = new THREE.InstancedMesh(new THREE.BoxGeometry(W * 0.92, H * 0.86, 0.3), new THREE.MeshLambertMaterial(), N);
+    escena.add(ladrillos);
+
+    const colorHex = (hex: string, i: number) => new THREE.Color(`#${hex.slice(i * 6, i * 6 + 6)}`);
+    const mezclar = (n: number) => {
+      const a = [...Array(n).keys()];
+      for (let i = n - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+    const quat = (x = 0, y = 0, z = 0) => new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z));
+
+    function pila(i: number): Pose {
+      const lado = i % 2 ? 1 : -1;
+      return {
+        p: new THREE.Vector3(CX + lado * (16 + Math.random() * 10), PISO + 0.5 + Math.random() * Math.random() * 2.5, 1 + Math.random() * 6),
+        q: quat(0, Math.random() * Math.PI, 0),
+        c: new THREE.Color('#3a3342'),
+      };
+    }
+
+    function destinos(obra: Clave): Pose[] {
+      const lista: Pose[] = [];
+      if (obra === 'mural') {
+        const { c, r } = obras.noche;
+        for (let y = 0; y < r; y++)
+          for (let x = 0; x < c; x++) {
+            const adoptado = Math.random() < 0.22;
+            lista.push({
+              p: new THREE.Vector3(CX + (x - c / 2 + (y % 2 ? 0.5 : 0)) * W, BASE + y * H, 0),
+              q: quat(),
+              c: new THREE.Color(adoptado ? PALETA[Math.floor(Math.random() * PALETA.length)] : '#2b2633'),
+            });
+          }
+      } else {
+        const { c, r, hex } = obras[obra];
+        for (let y = 0; y < r; y++)
+          for (let x = 0; x < c; x++) {
+            lista.push({ p: new THREE.Vector3(CX + (x - c / 2 + 0.5) * W, BASE + y * H, 0), q: quat(), c: colorHex(hex, y * c + x) });
+          }
+      }
+      while (lista.length < N) lista.push(pila(lista.length));
+      return lista;
+    }
+
+    const actual: Pose[] = [];
+    const desde: Pose[] = [];
+    const hacia: Pose[] = [];
+    const inicio = new Float32Array(N);
+    const duracion = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      const a: Pose = {
+        p: new THREE.Vector3((Math.random() - 0.5) * 80 + CX, PISO + 0.3, Math.random() * 14 - 2),
+        q: quat(Math.random() * 6, Math.random() * 6, Math.random() * 6),
+        c: new THREE.Color('#3a3342'),
+      };
+      actual.push(a);
+      desde.push(a);
+      hacia.push(a);
+    }
+
+    let obraActual: Clave = 'mona';
+    let comienzo = 0;
+    let automatico = true;
+
+    function formar(obra: Clave) {
+      obraActual = obra;
+      comienzo = performance.now();
+      titulo.textContent = INFO[obra].titulo;
+      autor.textContent = INFO[obra].autor;
+      botones.forEach((b) => b.classList.toggle('activo', b.dataset.obra === obra));
+      const lista = destinos(obra);
+      const orden = mezclar(N);
+      const enObra = obra === 'mona' ? obras.mona.c * obras.mona.r : N;
+      for (let k = 0; k < N; k++) {
+        const i = orden[k];
+        const d = lista[k];
+        desde[i] = { p: actual[i].p.clone(), q: actual[i].q.clone(), c: actual[i].c.clone() };
+        hacia[i] = d;
+        const fila = (d.p.y - BASE) / 17.5;
+        const centro = Math.abs(d.p.x - CX) / 11;
+        inicio[i] = quieto ? comienzo : comienzo + (k < enObra ? fila * 8000 + centro * 1200 + Math.random() * 500 : Math.random() * 3000);
+        duracion[i] = quieto ? 1 : 2600 + Math.random() * 800;
+      }
+    }
+
+    botones.forEach((b) =>
+      b.addEventListener('click', () => {
+        automatico = false;
+        formar(b.dataset.obra as Clave);
+      }),
+    );
+
+    const recorrido = [
+      { p: new THREE.Vector3(0, 3, 32), m: new THREE.Vector3(0, 3, 0) },
+      { p: new THREE.Vector3(-18, 0, 22), m: new THREE.Vector3(4, 3, 0) },
+      { p: new THREE.Vector3(16, 9, 24), m: new THREE.Vector3(4, 2, 0) },
+    ];
+    const mira = recorrido[0].m.clone();
+    const objetivo = new THREE.Vector3();
+    const destino = new THREE.Vector3();
+    let mouseX = 0;
+    let mouseY = 0;
+    addEventListener('pointermove', (e) => {
+      mouseX = e.clientX / innerWidth - 0.5;
+      mouseY = e.clientY / innerHeight - 0.5;
+    });
+
+    function redimensionar() {
+      renderer.setSize(innerWidth, innerHeight, false);
+      camara.aspect = innerWidth / innerHeight;
+      camara.updateProjectionMatrix();
+    }
+    addEventListener('resize', redimensionar);
+    redimensionar();
+    camara.position.copy(recorrido[0].p);
+
+    const dummy = new THREE.Object3D();
+    const giro = new THREE.Quaternion();
+    const euler = new THREE.Euler();
+    const suave = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+    formar('mona');
+
+    renderer.setAnimationLoop(() => {
+      const ahora = performance.now();
+      if (automatico && ahora - comienzo > DURACION_TOTAL + PAUSA) formar(ORDEN[(ORDEN.indexOf(obraActual) + 1) % ORDEN.length]);
+      avance.style.width = `${Math.min(100, ((ahora - comienzo) / DURACION_TOTAL) * 100)}%`;
+
+      for (let i = 0; i < N; i++) {
+        const k = suave(Math.min(1, Math.max(0, (ahora - inicio[i]) / duracion[i])));
+        const a = desde[i];
+        const b = hacia[i];
+        const vuelo = Math.sin(k * Math.PI);
+        const p = actual[i].p.lerpVectors(a.p, b.p, k);
+        p.y += vuelo * (1.5 + (i % 5) * 0.35);
+        p.z += vuelo * 2.5;
+        const q = actual[i].q.slerpQuaternions(a.q, b.q, k);
+        if (k > 0 && k < 1) q.multiply(giro.setFromEuler(euler.set(vuelo * 1.2, 0, vuelo * 0.4)));
+        actual[i].c.lerpColors(a.c, b.c, k);
+        dummy.position.copy(p);
+        dummy.quaternion.copy(q);
+        dummy.updateMatrix();
+        ladrillos.setMatrixAt(i, dummy.matrix);
+        ladrillos.setColorAt(i, actual[i].c);
+      }
+      ladrillos.instanceMatrix.needsUpdate = true;
+      if (ladrillos.instanceColor) ladrillos.instanceColor.needsUpdate = true;
+
+      const max = document.documentElement.scrollHeight - innerHeight;
+      const tramo = max > 0 ? (scrollY / max) * (recorrido.length - 1) : 0;
+      const t = Math.min(recorrido.length - 2, Math.floor(tramo));
+      const f = tramo - t;
+      destino.lerpVectors(recorrido[t].p, recorrido[t + 1].p, f);
+      destino.x += mouseX * 4;
+      destino.y -= mouseY * 2;
+      objetivo.lerpVectors(recorrido[t].m, recorrido[t + 1].m, f);
+      camara.position.lerp(destino, quieto ? 1 : 0.05);
+      mira.lerp(objetivo, quieto ? 1 : 0.05);
+      camara.lookAt(mira);
+      lampara.material.color.setHSL(0.1, 1, Math.random() > 0.98 ? 0.4 : 0.72);
+      neon.intensity = 260 + Math.sin(ahora / 300) * 40;
+      renderer.render(escena, camara);
+    });
+  }
+
+  document.querySelectorAll<HTMLElement>('.calle-arte').forEach(iniciar);
+</script>
+
+<style>
+  .obra-btn {
+    background: #1a141f;
+    border: 2px solid #3a2a30;
+    border-bottom-width: 4px;
+    color: rgb(255 255 255 / 0.75);
+    font: inherit;
+    transition: all 0.2s;
+  }
+  .obra-btn:hover {
+    border-color: #ffb547;
+    color: #fff;
+  }
+  .obra-btn.activo {
+    background: #ffb547;
+    border-color: #b07018;
+    color: #0a0812;
+    box-shadow: 0 0 22px #ffb54766;
+  }
+</style>

@@ -1,67 +1,209 @@
-<div id="mural" class="mural" aria-label="Mural de ladrillos"></div>
+<div class="cartel !p-3 !pt-7 md:!p-5 md:!pt-9">
+  <div class="mural-marco overflow-x-auto">
+    <div id="mural" class="mural relative" aria-label="Mural de ladrillos" role="group" aria-busy="true">
+      <p class="cargando m-0 p-10 text-center text-white/50">Levantando la pared…</p>
+    </div>
+  </div>
+  <div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs uppercase tracking-wider text-white/60">
+    <span class="flex items-center gap-2"><span class="muestra libre"></span>Libre</span>
+    <span class="flex items-center gap-2"><span class="muestra adoptado"></span>Adoptado</span>
+    <span class="ml-auto normal-case tracking-normal text-white/40">Tocá un ladrillo libre para adoptarlo</span>
+  </div>
+  <div id="mural-tooltip" class="mural-tooltip caja" role="tooltip" hidden></div>
+</div>
 
 <script>
   import { datos } from '../../lib/datos';
   import { emitir, escuchar } from '../../lib/eventos';
+  import { leerRecuerdo } from '../../lib/ipfs';
   import type { Ladrillo } from '../../lib/tipos';
 
-  // TODO [C2]: usar la foto real del mural (public/mural.jpg) recortada por ladrillo, tooltip y animación.
   const mural = document.getElementById('mural') as HTMLDivElement;
+  const tooltip = document.getElementById('mural-tooltip') as HTMLDivElement;
   const celdas = new Map<number, HTMLButtonElement>();
-  const ocupados = new Set<number>();
+  const ocupados = new Map<number, Ladrillo>();
+  const alias = new Map<number, Promise<string>>();
 
-  function pintar(l: Ladrillo) {
-    ocupados.add(l.id);
+  const fecha = (s: number) => new Date(s * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  function aliasDe(l: Ladrillo) {
+    if (!alias.has(l.id)) alias.set(l.id, leerRecuerdo(l.recuerdoCid).then((r) => r.alias ?? 'Anónimo', () => 'Anónimo'));
+    return alias.get(l.id)!;
+  }
+
+  function pintar(l: Ladrillo, animar = false) {
+    ocupados.set(l.id, l);
     const celda = celdas.get(l.id);
     if (!celda) return;
     celda.classList.add('adoptado');
-    celda.style.setProperty('--tono', String((l.id * 37) % 360));
-    celda.title = `Ladrillo #${l.id}`;
+    celda.setAttribute('aria-label', `Ladrillo #${l.id}, adoptado. Ver su recuerdo`);
+    if (animar) {
+      celda.classList.remove('recien');
+      void celda.offsetWidth;
+      celda.classList.add('recien');
+    }
+  }
+
+  async function mostrarTooltip(celda: HTMLButtonElement, id: number) {
+    const marco = mural.getBoundingClientRect();
+    const r = celda.getBoundingClientRect();
+    const padre = (tooltip.offsetParent as HTMLElement | null)?.getBoundingClientRect() ?? marco;
+    tooltip.style.left = `${r.left - padre.left + r.width / 2}px`;
+    tooltip.style.top = `${r.top - padre.top}px`;
+    const l = ocupados.get(id);
+    tooltip.dataset.id = String(id);
+    tooltip.innerHTML = l
+      ? `<strong>Ladrillo #${id}</strong><span>Cargando…</span>`
+      : `<strong>Ladrillo #${id}</strong><span class="libre">Adoptá este ladrillo</span>`;
+    tooltip.hidden = false;
+    if (l) {
+      const nombre = await aliasDe(l);
+      if (tooltip.dataset.id !== String(id)) return;
+      const span = tooltip.querySelector('span') as HTMLSpanElement;
+      span.textContent = `${nombre} · ${fecha(l.fecha)}`;
+    }
   }
 
   async function iniciar() {
     const [campania, ladrillos] = await Promise.all([datos.obtenerCampania(), datos.obtenerLadrillos()]);
+    mural.replaceChildren();
     mural.style.setProperty('--columnas', String(campania.columnas));
+    mural.style.setProperty('--filas', String(campania.filas));
 
     for (let id = 0; id < campania.filas * campania.columnas; id++) {
+      const fila = Math.floor(id / campania.columnas);
+      const columna = id % campania.columnas;
       const celda = document.createElement('button');
       celda.type = 'button';
       celda.className = 'ladrillo';
-      celda.title = `Adoptá el ladrillo #${id}`;
+      celda.style.setProperty('--x', String(columna));
+      celda.style.setProperty('--y', String(fila));
+      celda.setAttribute('aria-label', `Ladrillo #${id}, libre. Adoptalo`);
       celda.addEventListener('click', () => {
         if (ocupados.has(id)) window.location.href = `/ladrillo/${id}`;
         else emitir('pv:ladrillo-seleccionado', { id });
       });
+      celda.addEventListener('pointerenter', () => mostrarTooltip(celda, id));
+      celda.addEventListener('focus', () => mostrarTooltip(celda, id));
+      celda.addEventListener('pointerleave', () => (tooltip.hidden = true));
+      celda.addEventListener('blur', () => (tooltip.hidden = true));
       celdas.set(id, celda);
       mural.append(celda);
     }
+    mural.setAttribute('aria-busy', 'false');
 
-    ladrillos.forEach(pintar);
-    datos.suscribirDonaciones(pintar);
-    escuchar('pv:donacion-confirmada', ({ ladrillo }) => pintar(ladrillo));
+    ladrillos.forEach((l) => pintar(l));
+    datos.suscribirDonaciones((l) => pintar(l, true));
+    escuchar('pv:donacion-confirmada', ({ ladrillo }) => pintar(ladrillo, true));
   }
 
-  iniciar();
+  iniciar().catch(() => {
+    mural.innerHTML = '<p class="m-0 p-10 text-center text-white/60">No pudimos cargar el mural. Probá recargar la página.</p>';
+  });
 </script>
 
 <style>
+  .mural-marco {
+    margin: 0 -0.25rem;
+    padding: 0 0.25rem;
+  }
   .mural {
     display: grid;
     grid-template-columns: repeat(var(--columnas, 30), 1fr);
     gap: 2px;
-    width: 100%;
+    min-width: 620px;
+    background: #0a0812;
+    padding: 2px;
   }
   .mural :global(.ladrillo) {
     aspect-ratio: 2 / 1;
     border: none;
     padding: 0;
-    background: var(--color-libre);
     cursor: pointer;
+    background-image: url('/mural.jpg');
+    background-size: calc(var(--columnas) * 100%) calc(var(--filas) * 100%);
+    background-position: calc(var(--x) / (var(--columnas) - 1) * 100%) calc(var(--y) / (var(--filas) - 1) * 100%);
+    filter: grayscale(1) brightness(0.35) contrast(0.9);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), inset 0 -2px 0 rgb(0 0 0 / 0.35);
+    transition: filter 0.6s ease, transform 0.2s ease;
+  }
+  .mural :global(.ladrillo:hover),
+  .mural :global(.ladrillo:focus-visible) {
+    filter: grayscale(0.4) brightness(0.8);
+    transform: translateY(-2px) scale(1.15);
+    position: relative;
+    z-index: 2;
+    outline: 2px solid var(--color-acento);
+    outline-offset: 0;
   }
   .mural :global(.ladrillo.adoptado) {
-    background: hsl(var(--tono, 20) 65% 55%);
+    filter: none;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), inset 0 -2px 0 rgb(0 0 0 / 0.3);
   }
-  .mural :global(.ladrillo:hover) {
-    outline: 2px solid var(--color-texto);
+  .mural :global(.ladrillo.adoptado:hover) {
+    outline-color: var(--color-primario);
+  }
+  .mural :global(.ladrillo.recien) {
+    position: relative;
+    z-index: 3;
+    animation: pintarse 2.4s ease-out;
+  }
+  @keyframes pintarse {
+    0% {
+      filter: grayscale(1) brightness(0.35);
+      transform: scale(1);
+    }
+    35% {
+      filter: brightness(2.2) saturate(1.6);
+      transform: scale(1.9);
+      box-shadow: 0 0 24px 6px var(--color-primario);
+    }
+    100% {
+      filter: none;
+      transform: scale(1);
+    }
+  }
+  .muestra {
+    display: inline-block;
+    width: 24px;
+    height: 12px;
+    border: 1px solid var(--color-borde);
+  }
+  .muestra.libre {
+    background: #3a3342;
+  }
+  .muestra.adoptado {
+    background: linear-gradient(90deg, #8b5cf6, #ff3d9a, #ffb547);
+  }
+  .mural-tooltip {
+    position: absolute;
+    z-index: 10;
+    transform: translate(-50%, calc(-100% - 10px));
+    pointer-events: none;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    background: #0f0b16;
+    box-shadow: 4px 4px 0 #000;
+  }
+  .mural-tooltip[hidden] {
+    display: none;
+  }
+  .mural-tooltip :global(strong) {
+    color: var(--color-acento);
+    font-family: var(--fuente-titulos);
+    font-size: 1.1rem;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+  }
+  .mural-tooltip :global(.libre) {
+    color: var(--color-primario);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mural :global(.ladrillo.recien) {
+      animation: none;
+    }
   }
 </style>

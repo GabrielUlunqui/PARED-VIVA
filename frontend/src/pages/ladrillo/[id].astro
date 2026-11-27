@@ -1,36 +1,155 @@
 ---
+import QRCode from 'qrcode';
 import Base from '../../layouts/Base.astro';
+import { CONTRATOS, RED } from '../../contracts/config';
 import { datos } from '../../lib/datos';
 import { leerRecuerdo, urlGateway } from '../../lib/ipfs';
-import { formatearUsdc } from '../../lib/tipos';
+import { formatearUsdc, type Campania, type Ladrillo, type Recuerdo } from '../../lib/tipos';
 
 export const prerender = false;
 
 const id = Number(Astro.params.id);
-const ladrillo = Number.isInteger(id) ? await datos.obtenerLadrillo(id) : null;
-const recuerdo = ladrillo ? await leerRecuerdo(ladrillo.recuerdoCid) : null;
+let campania: Campania | null = null;
+let ladrillo: Ladrillo | null = null;
+let recuerdo: Recuerdo | null = null;
+let falloRecuerdo = false;
 
-// TODO [C5]: posición en el mural, imagen del recuerdo, link a la transacción.
+try {
+  campania = await datos.obtenerCampania();
+  const valido = Number.isInteger(id) && id >= 0 && id < campania.filas * campania.columnas;
+  ladrillo = valido ? await datos.obtenerLadrillo(id) : null;
+  if (!valido) campania = null;
+} catch {
+  campania = null;
+}
+if (ladrillo) {
+  recuerdo = await leerRecuerdo(ladrillo.recuerdoCid).catch(() => {
+    falloRecuerdo = true;
+    return null;
+  });
+}
+
+const columnas = campania?.columnas ?? 30;
+const filas = campania?.filas ?? 20;
+const fila = Math.floor(id / columnas);
+const columna = id % columnas;
+const url = new URL(`/ladrillo/${Astro.params.id}`, Astro.url.origin).toString();
+const qr = await QRCode.toString(url, { type: 'svg', margin: 1, color: { dark: '#0a0812', light: '#f3ede4' } });
+const fecha = ladrillo ? new Date(ladrillo.fecha * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+const explorador = `${RED.explorador}/contract/${CONTRATOS.paredViva}`;
+if (!campania) Astro.response.status = 404;
 ---
 
 <Base titulo={`Ladrillo #${Astro.params.id}`}>
-  {
-    ladrillo && recuerdo ? (
-      <article>
-        <h1>Ladrillo #{ladrillo.id}</h1>
-        <blockquote>{recuerdo.texto}</blockquote>
-        <p>{recuerdo.alias ?? 'Anónimo'} · {new Date(ladrillo.fecha * 1000).toLocaleDateString('es-AR')}</p>
-        <p>Aporte: {formatearUsdc(ladrillo.monto)}</p>
-        <p>Donante: <code>{ladrillo.donante}</code></p>
-        <p>
-          Recuerdo anclado on-chain: <a href={urlGateway(ladrillo.recuerdoCid)}>{ladrillo.recuerdoCid}</a>
-        </p>
-      </article>
-    ) : (
-      <>
-        <h1>Ladrillo libre</h1>
-        <p>Este ladrillo todavía no fue adoptado. <a href="/">Volver al mural</a></p>
-      </>
-    )
-  }
+  <div class="mx-auto max-w-6xl">
+    {
+      !campania ? (
+        <div class="cartel mx-auto max-w-xl text-center">
+          <p class="etiqueta m-0">Ladrillo #{Astro.params.id}</p>
+          <h1 class="m-0 mt-2">Este ladrillo no existe</h1>
+          <p class="m-0 mt-3 text-white/60">Puede que el link esté mal escrito o que la pared no se haya podido leer.</p>
+          <a href="/#mural-seccion" class="boton-ladrillo mt-6 inline-block px-6 py-3 text-sm uppercase tracking-wider no-underline">
+            Volver al mural
+          </a>
+        </div>
+      ) : (
+        <div class="grid items-start gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+          <article class="cartel !px-6 !pb-8 !pt-10 md:!px-10">
+            <p class="etiqueta m-0">
+              Ladrillo #{id} · fila {fila + 1}, columna {columna + 1}
+            </p>
+            {ladrillo ? (
+              <>
+                <h1 class="m-0 mt-2">
+                  El recuerdo de <span class="neon text-rosa">{recuerdo?.alias ?? 'un vecino'}</span>
+                </h1>
+                {recuerdo?.imagenCid && (
+                  <img src={urlGateway(recuerdo.imagenCid)} alt={`Foto del recuerdo del ladrillo #${id}`} class="mt-6 max-h-[420px] w-full border-2 border-junta object-cover" />
+                )}
+                {recuerdo ? (
+                  <blockquote class="m-0 mt-6 border-l-4 border-ladrillo pl-5 text-2xl leading-snug md:text-3xl">“{recuerdo.texto}”</blockquote>
+                ) : (
+                  <p class="caja m-0 mt-6 p-4 text-white/70">
+                    {falloRecuerdo ? 'No pudimos traer el recuerdo desde IPFS en este momento. El ladrillo sigue adoptado y su huella está guardada en la red.' : ''}
+                  </p>
+                )}
+                <p class="m-0 mt-4 text-sm uppercase tracking-wider text-ambar">{fecha}</p>
+              </>
+            ) : (
+              <>
+                <h1 class="m-0 mt-2">
+                  Este ladrillo <span class="neon text-ambar">está libre</span>
+                </h1>
+                <p class="m-0 mt-4 max-w-lg text-white/70">Todavía nadie lo adoptó. Podés ser la primera persona en dejarle un recuerdo.</p>
+                <a href={`/?ladrillo=${id}#mural-seccion`} class="boton-ladrillo mt-6 inline-block px-6 py-3 text-sm uppercase tracking-wider no-underline">
+                  Adoptá este ladrillo
+                </a>
+              </>
+            )}
+          </article>
+
+          <aside class="flex flex-col gap-6">
+            <div class="cartel !p-4 !pt-8">
+              <p class="etiqueta m-0 mb-3">Su lugar en la pared</p>
+              <div class="posicion relative w-full" style={`--x: ${columna}; --y: ${fila}; --columnas: ${columnas}; --filas: ${filas}`}>
+                <img src="/mural.jpg" alt="Mural del barrio" class="block w-full opacity-40 grayscale" />
+                <span class="marca absolute" />
+              </div>
+            </div>
+
+            {ladrillo && (
+              <dl class="cartel m-0 grid gap-4 text-sm">
+                <div>
+                  <dt class="etiqueta">Aporte</dt>
+                  <dd class="m-0 font-display text-3xl text-ambar">{formatearUsdc(ladrillo.monto)}</dd>
+                </div>
+                <div>
+                  <dt class="etiqueta">Donante</dt>
+                  <dd class="m-0"><code>{ladrillo.donante}</code></dd>
+                </div>
+                <div>
+                  <dt class="etiqueta">Recuerdo en IPFS</dt>
+                  <dd class="m-0"><a href={urlGateway(ladrillo.recuerdoCid)} target="_blank" rel="noopener"><code>{ladrillo.recuerdoCid}</code></a></dd>
+                </div>
+                <p class="caja m-0 p-3 text-white/70">
+                  El CID de este recuerdo está anclado on-chain en el contrato de Pared Viva: si alguien cambiara el contenido, el hash dejaría de coincidir.{' '}
+                  <a href={explorador} target="_blank" rel="noopener">Ver el contrato en el explorador</a>
+                </p>
+              </dl>
+            )}
+
+            <div class="cartel flex items-center gap-4 !p-4 !pt-8">
+              <div class="qr w-28 shrink-0 border-2 border-junta" set:html={qr} />
+              <p class="m-0 text-sm text-white/70">Escaneá este código para abrir el ladrillo desde el celular o compartirlo.</p>
+            </div>
+          </aside>
+        </div>
+      )
+    }
+  </div>
 </Base>
+
+<style>
+  .posicion .marca {
+    left: calc(var(--x) / var(--columnas) * 100%);
+    top: calc(var(--y) / var(--filas) * 100%);
+    width: calc(100% / var(--columnas));
+    height: calc(100% / var(--filas));
+    background-image: url('/mural.jpg');
+    background-size: calc(var(--columnas) * 100%) calc(var(--filas) * 100%);
+    background-position: calc(var(--x) / (var(--columnas) - 1) * 100%) calc(var(--y) / (var(--filas) - 1) * 100%);
+    outline: 2px solid var(--color-primario);
+    box-shadow: 0 0 16px 4px var(--color-primario);
+    animation: latido 1.8s ease-in-out infinite;
+  }
+  .qr :global(svg) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  @keyframes latido {
+    50% {
+      box-shadow: 0 0 4px 1px var(--color-primario);
+    }
+  }
+</style>

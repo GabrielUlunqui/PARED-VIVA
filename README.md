@@ -2,11 +2,70 @@
 
 > Otros proyectos financian la restauración de un mural. Pared Viva hace que el mural se mantenga solo, guarde la memoria del barrio y elija qué pared salvar después.
 
+[![CI](https://github.com/GabrielUlunqui/PARED-VIVA/actions/workflows/ci.yml/badge.svg)](https://github.com/GabrielUlunqui/PARED-VIVA/actions/workflows/ci.yml) [![Licencia MIT](https://img.shields.io/badge/licencia-MIT-green.svg)](LICENSE)
+
 **Eje II — Memoria** (toca también **Territorio** y **Arte**). Construido sobre **Stellar / Soroban**.
 
 ---
 
+## Probalo en 5 minutos (testnet)
+
+Pared Viva está desplegado en **Stellar Testnet**. No uses fondos reales.
+
+### Contratos
+
+- [`pared-viva`](https://stellar.expert/explorer/testnet/contract/CD3ZVQAQKTT3F3OW6DL6LQA4CDD4IEWGHRG4ZZDZJZTXQRJ5DIZXC6RE): `CD3ZVQAQKTT3F3OW6DL6LQA4CDD4IEWGHRG4ZZDZJZTXQRJ5DIZXC6RE`
+- [USDC de prueba (SAC)](https://stellar.expert/explorer/testnet/contract/CAKOGDRIVNTTJMVT5YEI5R5EY5FOBGPJSO4QOEFNHIZZBHYH7XQNSKDP): `CAKOGDRIVNTTJMVT5YEI5R5EY5FOBGPJSO4QOEFNHIZZBHYH7XQNSKDP`
+- [`fondo-barrio`](https://stellar.expert/explorer/testnet/contract/CB36KQWDL6BD6TJVVOMRVKSHVM5QK7VTOLLU6ZG3EH3ZK43LID42NNIA): `CB36KQWDL6BD6TJVVOMRVKSHVM5QK7VTOLLU6ZG3EH3ZK43LID42NNIA`
+
+### Correr el frontend contra testnet
+
+```sh
+git clone https://github.com/GabrielUlunqui/PARED-VIVA.git
+cd PARED-VIVA/frontend
+cp .env.example .env
+# En .env: PUBLIC_USAR_MOCK=false
+npm ci
+npm run dev
+```
+
+Abrí http://localhost:4321, instalá [Freighter](https://www.freighter.app/) y configurá la wallet en **Testnet**. Para subir recuerdos reales a IPFS también hace falta `PINATA_JWT` en `.env` (nunca se commitea).
+
+### Conseguir XLM y USDC de prueba
+
+- XLM de testnet: creá/fondeá una identidad con `stellar keys generate <nombre> --network testnet --fund` o usá Friendbot para una cuenta `G...`.
+- USDC de prueba del demo, desde `soroban/`:
+
+```sh
+./scripts/fondear.sh <identidad|direccion G...> <monto en USDC>
+```
+
+Si la dirección es externa (por ejemplo Freighter), primero agregá la trustline USDC con el emisor que indique el script; después volvé a fondear.
+
+### Recorrido de la demo
+
+1. Conectá Freighter en la laptop de presentación.
+2. Elegí un ladrillo libre, dejá un recuerdo y firmá la donación.
+3. Esperá la confirmación y mirá cómo se pinta el mural.
+4. Abrí `/ladrillo/<id>` para ver el recuerdo y su CID/hash.
+5. Entrá a `/firmantes` para revisar los hitos 40/30/30 y la aprobación 2 de 3.
+6. Verificá la transacción en Stellar Expert.
+
+**Decisión de demo:** el QR del mural abre `/ladrillo/[id]` y el mural en modo lectura, de modo que funcione en cualquier celular sin instalar wallet. La donación en vivo se firma desde la laptop con Freighter.
+
+## Documentación
+
+- [Modelo de negocio](docs/modelo-de-negocio.md)
+- [Plan de trabajo](PLAN_DE_TRABAJO.md)
+- [Seguridad](SECURITY.md)
+- [Contribución](CONTRIBUTING.md)
+
+---
+
 ## Índice
+
+- [Probalo en 5 minutos (testnet)](#probalo-en-5-minutos-testnet)
+- [Documentación](#documentación)
 
 1. [La idea](#1-la-idea)
 2. [El problema](#2-el-problema)
@@ -409,7 +468,7 @@ npm run build
 
 ### ⚠️ Windows: Smart App Control
 
-Si `stellar contract build` o `cargo test` fallan con:
+Hoy `cargo test` y `stellar contract build` compilan nativo en Windows en esta máquina. Si en otra PC aparece este error:
 
 ```
 Una directiva de Control de aplicaciones bloqueó este archivo. (os error 4551)

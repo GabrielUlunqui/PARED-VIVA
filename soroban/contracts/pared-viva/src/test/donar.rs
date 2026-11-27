@@ -51,10 +51,10 @@ fn donar_ladrillo_ocupado_falla() {
     let segundo = e.cuenta_con_saldo(2 * USDC);
     let recuerdo = String::from_str(&e.env, "bafy-ocupado");
 
-    e.contrato.donar(&primero, &3, &recuerdo, &USDC);
+    e.contrato.donar(&primero, &3, &recuerdo, &(2 * USDC));
 
     assert_eq!(
-        e.contrato.try_donar(&segundo, &3, &recuerdo, &USDC),
+        e.contrato.try_donar(&segundo, &3, &recuerdo, &(2 * USDC)),
         Err(Ok(Error::LadrilloOcupado))
     );
 }
@@ -142,7 +142,7 @@ fn donar_exige_auth_del_donante() {
     let e = escenario();
     let donante = e.cuenta_con_saldo(2 * USDC);
     let recuerdo = String::from_str(&e.env, "bafy-auth");
-    let monto = USDC;
+    let monto = 2 * USDC;
 
     e.contrato.donar(&donante, &4, &recuerdo, &monto);
 

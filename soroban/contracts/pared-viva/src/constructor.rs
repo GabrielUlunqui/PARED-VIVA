@@ -22,6 +22,16 @@ pub fn inicializar(env: &Env, config: Config) {
     }
     assert!(suma == config.meta, "la suma de los hitos debe ser igual a la meta");
 
+    let capacidad = config
+        .aporte_minimo
+        .checked_mul(config.filas as i128)
+        .and_then(|v| v.checked_mul(config.columnas as i128))
+        .expect("overflow al calcular la capacidad de la grilla");
+    assert!(
+        capacidad >= config.meta,
+        "aporte_minimo * filas * columnas debe alcanzar la meta (anti-griefing)"
+    );
+
     almacen::guardar_config(env, &config);
     almacen::guardar_recaudado(env, 0);
     almacen::guardar_hito_actual(env, 0);

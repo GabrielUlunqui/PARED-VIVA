@@ -1,0 +1,48 @@
+<aside class="panel-prueba" data-panel-prueba hidden>
+  <label>
+    <strong>Modo prueba</strong> (datos falsos, sin contrato) · Escenario:
+    <select data-escenario>
+      <option value="activa">Campaña activa</option>
+      <option value="financiada">Meta alcanzada (aprobar hitos)</option>
+      <option value="fallida">Campaña fallida (reembolsos)</option>
+    </select>
+  </label>
+  <small>Tu wallet conectada actúa como firmante 3 y como dueña de 3 ladrillos.</small>
+</aside>
+
+<script>
+  import { usandoMock } from '../../lib/datos';
+  import { escenarioMock, fijarEscenarioMock, type EscenarioMock } from '../../lib/datos/mock';
+
+  const panel = document.querySelector('[data-panel-prueba]') as HTMLElement;
+  const selector = panel.querySelector('[data-escenario]') as HTMLSelectElement;
+
+  if (usandoMock) {
+    panel.hidden = false;
+    selector.value = escenarioMock();
+    selector.addEventListener('change', () => {
+      fijarEscenarioMock(selector.value as EscenarioMock);
+      location.reload();
+    });
+  }
+</script>
+
+<style>
+  .panel-prueba {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem var(--espacio);
+    margin: var(--espacio) 0;
+    border: 1px dashed var(--color-secundario);
+    border-radius: var(--radio);
+    font-size: 0.9rem;
+  }
+  select {
+    font: inherit;
+    margin-left: 0.25rem;
+  }
+  small {
+    opacity: 0.75;
+  }
+</style>

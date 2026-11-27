@@ -179,6 +179,8 @@ pub struct Config {
 | `estado()` | Lectura | Devuelve `Resumen`: estado, meta, recaudado, fecha límite, hito actual, hitos, grilla y aporte mínimo |
 | `ladrillo(id)` / `ladrillos()` | Lectura | Dueño, monto, CID y fecha de cada ladrillo (para pintar la grilla) |
 | `aporte(donante)` | Lectura | Total aportado por una dirección |
+| `firmantes()` | Lectura | Los 3 firmantes (panel `/firmantes`) |
+| `aprobaciones(hito)` | Lectura | Firmantes que ya aprobaron ese hito (panel `/firmantes`) |
 | `es_guardian(direccion)` | Lectura | Usada por `fondo-barrio` para habilitar votos |
 
 **Modelo de datos:**

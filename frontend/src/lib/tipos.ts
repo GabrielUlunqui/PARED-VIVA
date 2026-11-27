@@ -28,6 +28,23 @@ export interface Recuerdo {
   creado: string;
 }
 
+export const APROBACIONES_NECESARIAS = 2;
+
+export type EstadoHito = 'Pendiente' | 'EnAprobacion' | 'Pagado';
+
+export interface Hito {
+  indice: number;
+  monto: bigint;
+  aprobadoPor: string[];
+  estado: EstadoHito;
+}
+
+export interface MiAporte {
+  total: bigint;
+  ladrillos: Ladrillo[];
+  guardian: boolean;
+}
+
 export const DECIMALES_USDC = 7;
 export const UNIDAD_USDC = 10_000_000n;
 

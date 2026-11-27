@@ -14,4 +14,13 @@ export const fuenteStellar: FuenteDatos = {
   suscribirDonaciones() {
     throw new Error('TODO [B4] suscribirDonaciones');
   },
+  async obtenerHitos() {
+    throw new Error('TODO [B3] obtenerHitos: estado() + aprobaciones(hito) → construirHitos');
+  },
+  async obtenerFirmantes() {
+    throw new Error('TODO [B3] obtenerFirmantes: firmantes()');
+  },
+  async obtenerAporte() {
+    throw new Error('TODO [B3] obtenerAporte: aporte(d) + es_guardian(d) + ladrillos() filtrados');
+  },
 };

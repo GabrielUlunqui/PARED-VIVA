@@ -1,0 +1,77 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  contratos:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: soroban
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Rust stable y wasm32v1-none
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup target add wasm32v1-none --toolchain stable
+          rustup default stable
+
+      - name: Cache de Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/
+            ~/.cargo/git/
+            soroban/target/
+          key: cargo-${{ runner.os }}-${{ hashFiles('soroban/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - name: Instalar Stellar CLI 30.0.1
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir -p stellar-cli-bin
+          curl -fsSL "https://github.com/stellar/stellar-cli/releases/download/v30.0.1/stellar-cli-30.0.1-x86_64-unknown-linux-gnu.tar.gz" -o stellar-cli.tar.gz
+          tar -xzf stellar-cli.tar.gz -C stellar-cli-bin
+          bin_dir="$(dirname "$(find stellar-cli-bin -type f -name stellar | head -n 1)")"
+          test -n "$bin_dir"
+          echo "$PWD/$bin_dir" >> "$GITHUB_PATH"
+          "$PWD/$bin_dir/stellar" --version
+
+      - name: Tests de contratos
+        run: cargo test
+
+      - name: Build de contratos
+        run: stellar contract build
+
+  frontend:
+    runs-on: ubuntu-latest
+    env:
+      PUBLIC_USAR_MOCK: "true"
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Usar npm 11
+        run: npm install --global npm@11
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run check
+
+      - name: Build
+        run: npm run build

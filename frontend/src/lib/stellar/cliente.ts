@@ -5,7 +5,12 @@ import { firmar } from './wallet';
 // Client.from descarga la interfaz del contrato desde la red: no hace falta esperar los bindings de A.
 // TODO [B3]: cuando A genere los bindings en src/contracts/pared-viva/, se puede cambiar por el Client tipado.
 export interface ClienteParedViva extends contract.Client {
-  donar(args: { donante: string; ladrillo_id: number; recuerdo_cid: string }): Promise<contract.AssembledTransaction<null>>;
+  donar(args: {
+    donante: string;
+    ladrillo_id: number;
+    recuerdo_cid: string;
+    monto: bigint;
+  }): Promise<contract.AssembledTransaction<null>>;
 }
 
 const clientes = new Map<string, Promise<ClienteParedViva>>();

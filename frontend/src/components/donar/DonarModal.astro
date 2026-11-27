@@ -2,11 +2,28 @@
 import Modal from '../ui/Modal.astro';
 import Boton from '../ui/Boton.astro';
 import { MAX_TEXTO } from '../../lib/ipfs';
+
+const MONTOS_SUGERIDOS = ['1', '5', '10', '25'];
+const MONTO_INICIAL = '5';
 ---
 
 <Modal id="modal-donar" titulo="Adoptá un ladrillo">
   <form class="donar" data-donar-form novalidate>
-    <p class="resumen">Ladrillo <strong data-donar-id>—</strong> · <span data-donar-precio>—</span></p>
+    <p class="resumen">Ladrillo <strong data-donar-id>—</strong></p>
+
+    <fieldset class="monto">
+      <legend>¿Cuánto querés aportar? <small>(mínimo <span data-donar-minimo>—</span>)</small></legend>
+      <div class="sugeridos">
+        {MONTOS_SUGERIDOS.map((m) => <button type="button" class="sugerido" data-monto={m}>{m} USDC</button>)}
+      </div>
+      <label class="otro">
+        Otro monto
+        <span class="campo-monto">
+          <input type="text" name="monto" inputmode="decimal" autocomplete="off" value={MONTO_INICIAL} />
+          <span>USDC</span>
+        </span>
+      </label>
+    </fieldset>
 
     <label>
       Tu recuerdo de este lugar
@@ -31,7 +48,10 @@ import { MAX_TEXTO } from '../../lib/ipfs';
   </form>
 
   <div class="exito" data-donar-exito hidden>
-    <p>¡Adoptaste el ladrillo <strong data-exito-id></strong>! Tu recuerdo ya es parte de la memoria del mural.</p>
+    <p>
+      ¡Adoptaste el ladrillo <strong data-exito-id></strong> con <strong data-exito-monto></strong>! Tu recuerdo ya es
+      parte de la memoria del mural.
+    </p>
     <p class="enlaces">
       <a data-exito-ladrillo href="/">Ver mi ladrillo</a>
       <a data-exito-tx href="/" target="_blank" rel="noopener">Ver transacción</a>
@@ -46,7 +66,7 @@ import { MAX_TEXTO } from '../../lib/ipfs';
   import { traducirError } from '../../lib/stellar/errores';
   import { donar, urlTransaccion, type EtapaTx } from '../../lib/stellar/transacciones';
   import { conectar, direccionActual } from '../../lib/stellar/wallet';
-  import { formatearUsdc } from '../../lib/tipos';
+  import { formatearUsdc, parsearUsdc } from '../../lib/tipos';
 
   const modal = document.getElementById('modal-donar') as HTMLDialogElement;
   const $ = <T extends HTMLElement>(sel: string) => modal.querySelector(sel) as T;
@@ -55,6 +75,8 @@ import { MAX_TEXTO } from '../../lib/ipfs';
   const texto = form.elements.namedItem('texto') as HTMLTextAreaElement;
   const imagen = form.elements.namedItem('imagen') as HTMLInputElement;
   const alias = form.elements.namedItem('alias') as HTMLInputElement;
+  const montoInput = form.elements.namedItem('monto') as HTMLInputElement;
+  const sugeridos = modal.querySelectorAll<HTMLButtonElement>('[data-monto]');
   const enviar = $<HTMLButtonElement>('[data-donar-enviar]');
   const estado = $('[data-donar-estado]');
   const error = $('[data-donar-error]');
@@ -66,11 +88,21 @@ import { MAX_TEXTO } from '../../lib/ipfs';
   };
 
   let ladrilloId: number | null = null;
-  let precio = 0n;
+  let minimo = 0n;
 
   function mostrar(el: HTMLElement, contenido: string | null) {
     el.hidden = !contenido;
     el.textContent = contenido ?? '';
+  }
+
+  function montoActual(): bigint | null {
+    return parsearUsdc(montoInput.value);
+  }
+
+  function actualizarMonto() {
+    const monto = montoActual();
+    enviar.textContent = monto && monto >= minimo ? `Donar ${formatearUsdc(monto)}` : 'Donar';
+    sugeridos.forEach((b) => b.classList.toggle('activo', parsearUsdc(b.dataset.monto!) === monto));
   }
 
   function reiniciar() {
@@ -81,9 +113,13 @@ import { MAX_TEXTO } from '../../lib/ipfs';
     mostrar(estado, null);
     mostrar(error, null);
     enviar.disabled = false;
+    actualizarMonto();
   }
 
   function validar(): string | null {
+    const monto = montoActual();
+    if (monto === null) return 'Ingresá un monto válido, por ejemplo 5 o 2,50.';
+    if (monto < minimo) return `El aporte mínimo es ${formatearUsdc(minimo)}.`;
     if (!texto.value.trim()) return 'Escribí un recuerdo para tu ladrillo.';
     const archivo = imagen.files?.[0];
     if (archivo && !TIPOS_IMAGEN.includes(archivo.type)) return 'La foto tiene que ser JPG, PNG o WebP.';
@@ -104,14 +140,21 @@ import { MAX_TEXTO } from '../../lib/ipfs';
     $('[data-donar-contador]').textContent = String(texto.value.length);
   });
 
+  montoInput.addEventListener('input', actualizarMonto);
+  sugeridos.forEach((boton) =>
+    boton.addEventListener('click', () => {
+      montoInput.value = boton.dataset.monto!;
+      actualizarMonto();
+    }),
+  );
+
   escuchar('pv:ladrillo-seleccionado', async ({ id }) => {
-    reiniciar();
     ladrilloId = id;
     $('[data-donar-id]').textContent = `#${id}`;
+    minimo = (await datos.obtenerCampania()).aporteMinimo;
+    $('[data-donar-minimo]').textContent = formatearUsdc(minimo);
+    reiniciar();
     modal.showModal();
-    precio = (await datos.obtenerCampania()).precioLadrillo;
-    $('[data-donar-precio]').textContent = formatearUsdc(precio);
-    enviar.textContent = `Donar ${formatearUsdc(precio)}`;
   });
 
   form.addEventListener('submit', async (e) => {
@@ -122,6 +165,7 @@ import { MAX_TEXTO } from '../../lib/ipfs';
     if (invalido) return;
 
     const id = ladrilloId;
+    const monto = montoActual()!;
     enviar.disabled = true;
     try {
       const donante = await obtenerDireccion();
@@ -130,7 +174,7 @@ import { MAX_TEXTO } from '../../lib/ipfs';
       mostrar(estado, 'Guardando tu recuerdo…');
       const cid = await subirRecuerdo(texto.value.trim(), imagen.files?.[0], alias.value.trim() || undefined);
 
-      const { valor: ladrillo, txHash } = await donar(donante, id, cid, precio, (etapa) =>
+      const { valor: ladrillo, txHash } = await donar(donante, id, cid, monto, (etapa) =>
         mostrar(estado, MENSAJES_ETAPA[etapa]),
       );
 
@@ -138,6 +182,7 @@ import { MAX_TEXTO } from '../../lib/ipfs';
       form.hidden = true;
       exito.hidden = false;
       $('[data-exito-id]').textContent = `#${id}`;
+      $('[data-exito-monto]').textContent = formatearUsdc(monto);
       $<HTMLAnchorElement>('[data-exito-ladrillo]').href = `/ladrillo/${id}`;
       const enlaceTx = $<HTMLAnchorElement>('[data-exito-tx]');
       enlaceTx.hidden = !txHash || txHash.startsWith('mock-');
@@ -179,6 +224,53 @@ import { MAX_TEXTO } from '../../lib/ipfs';
   }
   .resumen {
     margin: 0;
+  }
+  .monto {
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    padding: var(--espacio);
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .monto legend {
+    font-weight: 600;
+    padding: 0 0.25rem;
+  }
+  .monto legend small {
+    font-weight: 400;
+    opacity: 0.7;
+  }
+  .sugeridos {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .sugerido {
+    flex: 1;
+    font: inherit;
+    padding: 0.5rem;
+    border: 1px solid var(--color-secundario);
+    border-radius: var(--radio);
+    background: transparent;
+    color: var(--color-secundario);
+    cursor: pointer;
+  }
+  .sugerido.activo {
+    background: var(--color-secundario);
+    color: white;
+  }
+  .otro {
+    font-weight: 400;
+  }
+  .campo-monto {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .campo-monto input {
+    flex: 1;
   }
   .estado {
     margin: 0;

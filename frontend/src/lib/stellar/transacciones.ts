@@ -28,12 +28,12 @@ export async function donar(
     await esperar(800);
     alProgreso('enviando');
     await esperar(1200);
-    return { valor: registrarDonacionMock(ladrilloId, donante, recuerdoCid), txHash: `mock-${Date.now()}` };
+    return { valor: registrarDonacionMock(ladrilloId, donante, recuerdoCid, monto), txHash: `mock-${Date.now()}` };
   }
 
   const { clienteParedViva } = await import('./cliente');
   const cliente = await clienteParedViva(donante);
-  const tx = await cliente.donar({ donante, ladrillo_id: ladrilloId, recuerdo_cid: recuerdoCid });
+  const tx = await cliente.donar({ donante, ladrillo_id: ladrilloId, recuerdo_cid: recuerdoCid, monto });
   alProgreso('firmando');
   await tx.sign();
   alProgreso('enviando');

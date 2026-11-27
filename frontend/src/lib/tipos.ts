@@ -9,7 +9,7 @@ export interface Campania {
   hitos: bigint[];
   filas: number;
   columnas: number;
-  precioLadrillo: bigint;
+  aporteMinimo: bigint;
 }
 
 export interface Ladrillo {
@@ -30,6 +30,13 @@ export interface Recuerdo {
 
 export const DECIMALES_USDC = 7;
 export const UNIDAD_USDC = 10_000_000n;
+
+export function parsearUsdc(texto: string): bigint | null {
+  const limpio = texto.trim().replace(',', '.');
+  const match = limpio.match(/^(\d+)(?:\.(\d{1,7}))?$/);
+  if (!match) return null;
+  return BigInt(match[1]) * UNIDAD_USDC + BigInt((match[2] ?? '').padEnd(DECIMALES_USDC, '0'));
+}
 
 export function formatearUsdc(monto: bigint): string {
   const entero = monto / UNIDAD_USDC;

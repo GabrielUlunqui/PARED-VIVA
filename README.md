@@ -164,7 +164,7 @@ pub struct Config {
     pub hitos: Vec<i128>,        // montos por hito; deben sumar `meta`
     pub filas: u32,
     pub columnas: u32,
-    pub precio_ladrillo: i128,
+    pub aporte_minimo: i128,     // monto mínimo por ladrillo (evita ocupar el mural con montos ínfimos)
 }
 ```
 
@@ -172,11 +172,11 @@ pub struct Config {
 
 | Función | Quién | Qué hace |
 |---|---|---|
-| `donar(donante, ladrillo_id, recuerdo_cid)` | Donante | `require_auth`; valida que la campaña esté activa y el ladrillo libre; transfiere `precio_ladrillo` del donante al contrato; registra el ladrillo; suma al aporte del donante; lo marca como guardián; emite evento |
+| `donar(donante, ladrillo_id, recuerdo_cid, monto)` | Donante | `require_auth`; valida que la campaña esté activa, el ladrillo libre y `monto >= aporte_minimo`; transfiere `monto` (lo elige el donante) del donante al contrato; registra el ladrillo; suma al aporte del donante; lo marca como guardián; emite evento |
 | `aprobar_hito(firmante, hito)` | Firmante | `require_auth`; valida que sea uno de los 3, que la meta esté alcanzada y que el hito sea el siguiente pendiente; registra la aprobación; **con la 2.ª aprobación transfiere el monto del hito al restaurador** |
 | `reembolsar(donante)` | Donante | Si pasó la fecha límite sin meta, devuelve el aporte completo y lo pone en 0 |
 | `retirar_excedente()` | Cualquiera | Tras completar todos los hitos, envía el sobrante (aportes por encima de la meta) al `fondo` |
-| `estado()` | Lectura | Devuelve `Resumen`: estado, meta, recaudado, fecha límite, hito actual, hitos, grilla y precio |
+| `estado()` | Lectura | Devuelve `Resumen`: estado, meta, recaudado, fecha límite, hito actual, hitos, grilla y aporte mínimo |
 | `ladrillo(id)` / `ladrillos()` | Lectura | Dueño, monto, CID y fecha de cada ladrillo (para pintar la grilla) |
 | `aporte(donante)` | Lectura | Total aportado por una dirección |
 | `es_guardian(direccion)` | Lectura | Usada por `fondo-barrio` para habilitar votos |
@@ -248,6 +248,7 @@ En el MVP **no es un contrato separado**: es un registro `Guardian(Address) -> b
 Cada contrato tiene `src/test.rs` con tests del entorno de host (`cargo test`). Casos mínimos:
 
 - [ ] Donar ladrillo libre registra ladrillo, aporte y guardián
+- [ ] Donar menos del aporte mínimo falla
 - [ ] Donar ladrillo ocupado falla
 - [ ] Donar después de la fecha límite falla
 - [ ] 1 aprobación no libera; 2 aprobaciones liberan el hito correcto
@@ -452,7 +453,7 @@ stellar contract bindings typescript --network testnet --contract-id pared-viva 
   --output-dir ../frontend/src/contracts/pared-viva
 ```
 
-> Montos: USDC en Stellar usa **7 decimales** → `1 USDC = 10_000_000`. En el ejemplo: meta 1.000 USDC, ladrillo a 5 USDC.
+> Montos: USDC en Stellar usa **7 decimales** → `1 USDC = 10_000_000`. En el ejemplo: meta 1.000 USDC, aporte mínimo por ladrillo 1 USDC (cada donante elige cuánto aportar).
 > `stellar contract invoke --id pared-viva --network testnet -- -h` muestra la CLI generada con todas las funciones.
 
 ## 12. Forma de trabajo

@@ -8,6 +8,7 @@ export const ERRORES_CONTRATO: Record<number, string> = {
   7: 'La campaña todavía no alcanzó la meta.',
   8: 'La campaña no está en estado de reembolso.',
   9: 'No tenés aportes para reembolsar.',
+  20: 'El monto es menor al aporte mínimo.',
 };
 
 const ERRORES_TOKEN: Record<number, string> = {

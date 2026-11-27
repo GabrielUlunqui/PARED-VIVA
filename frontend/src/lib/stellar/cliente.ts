@@ -1,19 +1,7 @@
-import { contract } from '@stellar/stellar-sdk';
+import { Client } from '../../contracts/pared-viva/src/index';
 import { CONTRATOS, RED } from '../../contracts/config';
-import { firmar } from './wallet';
 
-// Client.from descarga la interfaz del contrato desde la red: no hace falta esperar los bindings de A.
-// TODO [B3]: cuando A genere los bindings en src/contracts/pared-viva/, se puede cambiar por el Client tipado.
-export interface ClienteParedViva extends contract.Client {
-  donar(args: {
-    donante: string;
-    ladrillo_id: number;
-    recuerdo_cid: string;
-    monto: bigint;
-  }): Promise<contract.AssembledTransaction<null>>;
-  aprobar_hito(args: { firmante: string; hito: number }): Promise<contract.AssembledTransaction<null>>;
-  reembolsar(args: { donante: string }): Promise<contract.AssembledTransaction<contract.Result<bigint>>>;
-}
+export type ClienteParedViva = Client;
 
 const clientes = new Map<string, Promise<ClienteParedViva>>();
 
@@ -27,16 +15,16 @@ export function clienteParedViva(publicKey?: string): Promise<ClienteParedViva> 
   }
   const clave = publicKey ?? '';
   if (!clientes.has(clave)) {
-    clientes.set(
-      clave,
-      contract.Client.from({
-        contractId: CONTRATOS.paredViva,
-        rpcUrl: RED.rpcUrl,
-        networkPassphrase: RED.passphrase,
-        publicKey,
-        signTransaction: async (xdr: string) => ({ signedTxXdr: await firmar(xdr), signerAddress: publicKey }),
-      }) as Promise<ClienteParedViva>,
-    );
+    const cliente = new Client({
+      contractId: CONTRATOS.paredViva,
+      rpcUrl: RED.rpcUrl,
+      networkPassphrase: RED.passphrase,
+      publicKey,
+      signTransaction: publicKey
+        ? async (xdr: string) => ({ signedTxXdr: await (await import('./wallet')).firmar(xdr), signerAddress: publicKey })
+        : undefined,
+    });
+    clientes.set(clave, Promise.resolve(cliente));
   }
   return clientes.get(clave)!;
 }

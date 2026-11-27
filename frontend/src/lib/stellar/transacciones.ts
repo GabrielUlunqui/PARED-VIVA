@@ -37,6 +37,7 @@ async function firmarYEnviar<T>(tx: contract.AssembledTransaction<T>, alProgreso
   await tx.sign();
   alProgreso('enviando');
   const enviada = await tx.send();
+  void enviada.result;
   return { enviada, txHash: enviada.sendTransactionResponse?.hash ?? '' };
 }
 

@@ -1,6 +1,6 @@
 use soroban_sdk::{
     contract, contractimpl, contracttype,
-    testutils::Address as _,
+    testutils::{Address as _, Events as _, Ledger},
     token::{StellarAssetClient, TokenClient},
     Address, Env, String,
 };
@@ -91,6 +91,11 @@ impl Escenario<'_> {
 
     fn cid(&self, texto: &str) -> String {
         String::from_str(&self.env, texto)
+    }
+
+    /// Deja pasar la ventana minima de la ronda (120 ledgers en el contrato parcheado).
+    fn avanzar_ventana(&self) {
+        self.env.ledger().set_sequence_number(200);
     }
 }
 
@@ -219,6 +224,7 @@ fn cerrar_ronda_paga_la_propuesta_con_mas_votos_y_abre_otra() {
     e.contrato.votar(&g2, &p2);
     e.contrato.votar(&g3, &p1);
 
+    e.avanzar_ventana();
     assert_eq!(e.contrato.cerrar_ronda(), p2);
     assert_eq!(e.token.balance(&g2), 70);
     assert_eq!(e.contrato.saldo_fondo(), 80);
@@ -236,12 +242,15 @@ fn cerrar_ronda_paga_la_propuesta_con_mas_votos_y_abre_otra() {
 fn cerrar_ronda_sin_fondos_suficientes_queda_abierta() {
     let e = escenario();
     let guardian = e.guardian();
+    let guardian2 = e.guardian();
     let cuidador = e.cuenta_con_saldo(100);
     let cid = e.cid("bafy-propuesta");
     e.contrato.aportar(&cuidador, &50);
     let id = e.contrato.proponer(&guardian, &cid, &100);
     e.contrato.votar(&guardian, &id);
+    e.contrato.votar(&guardian2, &id);
 
+    e.avanzar_ventana();
     assert_eq!(
         e.contrato.try_cerrar_ronda(),
         Err(Ok(Error::FondoInsuficiente))
@@ -275,9 +284,82 @@ fn en_empate_gana_la_propuesta_creada_primero() {
     let p1 = e.contrato.proponer(&g1, &cid, &50);
     let p2 = e.contrato.proponer(&g2, &cid, &50);
     e.contrato.votar(&g3, &p1);
+    e.contrato.votar(&g1, &p1);
     e.contrato.votar(&g4, &p2);
+    e.contrato.votar(&g2, &p2);
 
+    e.avanzar_ventana();
     assert_eq!(e.contrato.cerrar_ronda(), p1);
     assert_eq!(e.token.balance(&g1), 50);
     assert_eq!(e.token.balance(&g2), 0);
+}
+
+// --- Tests de la auditoria (C1/M2/M3) ---
+
+#[test]
+fn cerrar_ronda_antes_de_la_ventana_falla() {
+    let e = escenario();
+    let g1 = e.guardian();
+    let g2 = e.guardian();
+    let cuidador = e.cuenta_con_saldo(100);
+    let cid = e.cid("bafy-propuesta");
+    e.contrato.aportar(&cuidador, &100);
+    let id = e.contrato.proponer(&g1, &cid, &50);
+    e.contrato.votar(&g1, &id);
+    e.contrato.votar(&g2, &id);
+
+    // sin avanzar la ventana, ni con quorum alcanza
+    assert_eq!(e.contrato.try_cerrar_ronda(), Err(Ok(Error::RondaAbierta)));
+    e.avanzar_ventana();
+    assert_eq!(e.contrato.cerrar_ronda(), id);
+}
+
+#[test]
+fn cerrar_ronda_sin_quorum_falla_aunque_haya_propuesta() {
+    let e = escenario();
+    let g1 = e.guardian();
+    let cuidador = e.cuenta_con_saldo(100);
+    let cid = e.cid("bafy-propuesta");
+    e.contrato.aportar(&cuidador, &100);
+    let id = e.contrato.proponer(&g1, &cid, &50);
+    e.contrato.votar(&g1, &id); // un solo voto, quorum es 2
+
+    e.avanzar_ventana();
+    assert_eq!(e.contrato.try_cerrar_ronda(), Err(Ok(Error::SinQuorum)));
+    assert_eq!(e.contrato.ronda_actual(), 0);
+    assert_eq!(e.contrato.saldo_fondo(), 100); // el fondo no se movio
+}
+
+#[test]
+fn cerrar_ronda_emite_evento() {
+    let e = escenario();
+    let g1 = e.guardian();
+    let g2 = e.guardian();
+    let cuidador = e.cuenta_con_saldo(100);
+    let cid = e.cid("bafy-propuesta");
+    e.contrato.aportar(&cuidador, &100);
+    let id = e.contrato.proponer(&g1, &cid, &50);
+    e.contrato.votar(&g1, &id);
+    e.contrato.votar(&g2, &id);
+    e.avanzar_ventana();
+    e.contrato.cerrar_ronda();
+    let eventos = e.env.events().all();
+    assert!(!eventos.events().is_empty());
+}
+
+#[test]
+fn propuestas_pagina_devuelve_solo_la_pagina() {
+    let e = escenario();
+    let g = e.guardian();
+    let cid = e.cid("bafy-propuesta");
+    let mut ids = soroban_sdk::Vec::new(&e.env);
+    for _ in 0..5 {
+        ids.push_back(e.contrato.proponer(&g, &cid, &10));
+    }
+    let pagina = e.contrato.propuestas_pagina(&0, &1, &2);
+    assert_eq!(pagina.len(), 2);
+    assert_eq!(pagina.get(0).unwrap().id, ids.get(1).unwrap());
+    assert_eq!(pagina.get(1).unwrap().id, ids.get(2).unwrap());
+    assert_eq!(e.contrato.propuestas_pagina(&0, &4, &50).len(), 1);
+    assert_eq!(e.contrato.propuestas_pagina(&0, &5, &50).len(), 0);
 }

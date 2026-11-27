@@ -7,7 +7,7 @@
 ## Verificación
 
 - Frontend (desde `frontend/`): `npm run check` y `npm run build`.
-- Contratos (desde `soroban/`): `cargo test` y `stellar contract build`. En esta PC con Windows, Smart App Control bloquea los build scripts de Cargo (os error 4551): compilar en WSL2 o Codespaces.
+- Contratos (desde `soroban/`): `cargo test` y `stellar contract build`. Compilan nativo en Windows; si en otra PC Smart App Control bloquea los build scripts de Cargo (os error 4551), compilar en WSL2 o Codespaces (README §10).
 
 ## Organización
 

@@ -218,19 +218,19 @@ Duración estimada: una sesión corta. Al terminar, cada uno puede irse a trabaj
 **Objetivo:** el contrato `pared-viva` (y en fase 2 `fondo-barrio`) funcionando en testnet, con tests, y los bindings listos para el frontend.
 
 ### A0. Entorno
-- [ ] Destrabar la compilación (README §10): WSL2 recomendado, o Codespaces.
-- [ ] En ese entorno: Rust, `rustup target add wasm32v1-none`, Stellar CLI.
-- [ ] `stellar contract build` y `cargo test` compilan la plantilla actual.
-- [ ] Crear identidades: `admin`, `restaurador`, `firmante1`, `firmante2`, `firmante3`, `fondo` (README §11).
+- [x] Destrabar la compilación (README §10): WSL2 recomendado, o Codespaces.
+- [x] En ese entorno: Rust, `rustup target add wasm32v1-none`, Stellar CLI.
+- [x] `stellar contract build` y `cargo test` compilan la plantilla actual.
+- [x] Crear identidades: `admin`, `restaurador`, `firmante1`, `firmante2`, `firmante3`, `fondo` (README §11).
 
 **Listo cuando:** la plantilla compila y las identidades tienen XLM de testnet.
 
 ### A1. Esqueleto desplegado ⭐ (desbloquea a B)
 - [x] Reemplazar el `hello_world` por la estructura de `pared-viva`: `Estado`, `Config`, `Resumen`, `Ladrillo`, `Clave`, `Error` y **todas** las funciones con sus firmas definitivas (cuerpos en `todo!()`). **Ojo:** el esqueleto no se pudo compilar en Windows por Smart App Control; lo primero es correr `cargo test` y corregir lo que haga falta.
-- [ ] Implementación mínima: constructor guarda la config; `donar` guarda el ladrillo (todavía sin transferir tokens ni validar); `estado`, `ladrillo`, `ladrillos` devuelven lo guardado; el resto `panic!` con un error.
-- [ ] Desplegar en testnet con alias `pared-viva`.
-- [ ] Generar bindings en `frontend/src/contracts/pared-viva/`.
-- [ ] Crear `frontend/src/contracts/config.ts`:
+- [x] Implementación mínima: constructor guarda la config; `donar` guarda el ladrillo (todavía sin transferir tokens ni validar); `estado`, `ladrillo`, `ladrillos` devuelven lo guardado; el resto `panic!` con un error.
+- [x] Desplegar en testnet con alias `pared-viva`.
+- [x] Generar bindings en `frontend/src/contracts/pared-viva/`.
+- [x] Crear `frontend/src/contracts/config.ts`:
   ```ts
   export const RED = {
     rpcUrl: 'https://soroban-testnet.stellar.org',
@@ -241,55 +241,55 @@ Duración estimada: una sesión corta. Al terminar, cada uno puede irse a trabaj
     usdc: 'C...',
   };
   ```
-- [ ] Avisar en el chat: "esqueleto en testnet, ID C...".
+- [x] Avisar en el chat: "esqueleto en testnet, ID C...".
 
 **Listo cuando:** `stellar contract invoke --id pared-viva -- estado` responde y los bindings están en `main`.
 
 ### A2. Token de prueba y fondeo
-- [ ] Desplegar el asset `USDC` de prueba emitido por `admin` y su SAC (README §11).
-- [ ] Script `soroban/scripts/fondear.sh <direccion> <monto>`: crea trustline si hace falta (o explica cómo hacerla desde Freighter) y transfiere USDC de prueba.
-- [ ] Fondear las wallets de B y C con 1.000 USDC de prueba.
+- [x] Desplegar el asset `USDC` de prueba emitido por `admin` y su SAC (README §11).
+- [x] Script `soroban/scripts/fondear.sh <direccion> <monto>`: crea trustline si hace falta (o explica cómo hacerla desde Freighter) y transfiere USDC de prueba.
+- [x] Fondear las wallets de B y C con 1.000 USDC de prueba.
 
 **Listo cuando:** B y C ven saldo USDC en Freighter.
 
 ### A3. `donar` completo
-- [ ] `donante.require_auth()`.
-- [ ] Validar estado `Activa`, fecha límite no vencida, ladrillo válido y libre.
-- [ ] Validar `monto >= aporte_minimo` (si no, `MontoInsuficiente`).
-- [ ] Transferir `monto` del donante al contrato con el cliente del token.
-- [ ] Sumar a `Recaudado` y `Aporte(donante)`; marcar `Guardian(donante)`.
-- [ ] Si `recaudado >= meta` → estado `Financiada`.
-- [ ] Emitir evento `donacion`.
-- [ ] `extend_ttl` en las entradas persistentes escritas.
+- [x] `donante.require_auth()`.
+- [x] Validar estado `Activa`, fecha límite no vencida, ladrillo válido y libre.
+- [x] Validar `monto >= aporte_minimo` (si no, `MontoInsuficiente`).
+- [x] Transferir `monto` del donante al contrato con el cliente del token.
+- [x] Sumar a `Recaudado` y `Aporte(donante)`; marcar `Guardian(donante)`.
+- [x] Si `recaudado >= meta` → estado `Financiada`.
+- [x] Emitir evento `donacion`.
+- [x] `extend_ttl` en las entradas persistentes escritas.
 
 ### A4. Hitos 2 de 3
-- [ ] `aprobar_hito(firmante, hito)`: auth, validar firmante, estado `Financiada`, hito = `HitoActual`, no aprobado antes.
-- [ ] Guardar `Aprobacion(hito, firmante)`; emitir `hito_ok`.
-- [ ] Al llegar a 2 aprobaciones: transferir el monto del hito al restaurador, avanzar `HitoActual`, emitir `hito_pago`.
-- [ ] Tras el último hito → estado `Completada`.
+- [x] `aprobar_hito(firmante, hito)`: auth, validar firmante, estado `Financiada`, hito = `HitoActual`, no aprobado antes.
+- [x] Guardar `Aprobacion(hito, firmante)`; emitir `hito_ok`.
+- [x] Al llegar a 2 aprobaciones: transferir el monto del hito al restaurador, avanzar `HitoActual`, emitir `hito_pago`.
+- [x] Tras el último hito → estado `Completada`.
 
 ### A5. Reembolso y excedente
-- [ ] `estado()` calcula `Fallida` si `ahora > fecha_limite` y `recaudado < meta`.
-- [ ] `reembolsar(donante)`: auth, estado `Fallida`, aporte > 0, poner aporte en 0 **antes** de transferir, emitir `reembolso`.
-- [ ] `retirar_excedente()`: en `Completada`, enviar el saldo restante al `fondo`.
+- [x] `estado()` calcula `Fallida` si `ahora > fecha_limite` y `recaudado < meta`.
+- [x] `reembolsar(donante)`: auth, estado `Fallida`, aporte > 0, poner aporte en 0 **antes** de transferir, emitir `reembolso`.
+- [x] `retirar_excedente()`: en `Completada`, enviar el saldo restante al `fondo`.
 
 ### A6. Tests (`src/test.rs`)
-- [ ] Todos los casos de la sección 6.5 del README.
-- [ ] Usar `env.ledger().set_timestamp(...)` para simular fecha límite vencida.
-- [ ] Usar `env.register_stellar_asset_contract_v2(...)` para un USDC de test.
-- [ ] `cargo test` en verde antes de cada despliegue.
+- [x] Todos los casos de la sección 6.5 del README.
+- [x] Usar `env.ledger().set_timestamp(...)` para simular fecha límite vencida.
+- [x] Usar `env.register_stellar_asset_contract_v2(...)` para un USDC de test.
+- [x] `cargo test` en verde antes de cada despliegue.
 
 ### A7. Despliegue de demo
-- [ ] Script `soroban/scripts/desplegar.sh`: build + deploy + bindings + actualizar `config.ts`.
-- [ ] Script `soroban/scripts/sembrar-demo.sh`: cuentas extra que donan ~90 % de la meta en ladrillos dispersos, para que en la demo se llegue a la meta en vivo.
-- [ ] Desplegar la versión final, regenerar bindings, avisar el nuevo ID.
+- [x] Script `soroban/scripts/desplegar.sh`: build + deploy + bindings + actualizar `config.ts`.
+- [x] Script `soroban/scripts/sembrar-demo.sh`: cuentas extra que donan ~90 % de la meta en ladrillos dispersos, para que en la demo se llegue a la meta en vivo.
+- [x] Desplegar la versión final, regenerar bindings, avisar el nuevo ID.
 
 ### A8. Fase 2 — `fondo-barrio`
-- [ ] Crear `soroban/contracts/fondo-barrio/` con la misma estructura que `pared-viva` (`Cargo.toml`, `src/lib.rs`, `src/test.rs`).
-- [ ] `vender_lamina` con split en puntos básicos (test de redondeo).
-- [ ] `aportar`.
-- [ ] `proponer`, `votar` (llama `es_guardian` en `pared-viva`), `cerrar_ronda`.
-- [ ] Tests, despliegue, bindings en `frontend/src/contracts/fondo-barrio/`, ID en `config.ts`.
+- [x] Crear `soroban/contracts/fondo-barrio/` con la misma estructura que `pared-viva` (`Cargo.toml`, `src/lib.rs`, `src/test.rs`).
+- [x] `vender_lamina` con split en puntos básicos (test de redondeo).
+- [x] `aportar`.
+- [x] `proponer`, `votar` (llama `es_guardian` en `pared-viva`), `cerrar_ronda`.
+- [x] Tests, despliegue, bindings en `frontend/src/contracts/fondo-barrio/`, ID en `config.ts`.
 
 ### Entregables de A
 | # | Entregable | Desbloquea |

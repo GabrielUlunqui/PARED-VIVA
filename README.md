@@ -56,6 +56,7 @@ Si la dirección es externa (por ejemplo Freighter), primero agregá la trustlin
 ## Documentación
 
 - [Modelo de negocio](docs/modelo-de-negocio.md)
+- [Marco legal](docs/legal.md) y [borradores de documentos legales](docs/legal/)
 - [Plan de trabajo](PLAN_DE_TRABAJO.md)
 - [Seguridad](SECURITY.md)
 - [Contribución](CONTRIBUTING.md)

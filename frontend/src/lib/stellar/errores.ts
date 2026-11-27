@@ -9,6 +9,8 @@ export const ERRORES_CONTRATO: Record<number, string> = {
   8: 'La campaña no está en estado de reembolso.',
   9: 'No tenés aportes para reembolsar.',
   20: 'El monto es menor al aporte mínimo.',
+  21: 'No se pudo registrar tu recuerdo (llegó vacío o demasiado largo). Probá guardarlo de nuevo.',
+  22: 'Solo los otros firmantes de la campaña pueden rotar a un firmante.',
 };
 
 const ERRORES_TOKEN: Record<number, string> = {

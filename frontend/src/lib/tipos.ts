@@ -62,6 +62,12 @@ export function formatearMonto(monto: bigint, codigo: string, decimales = 2): st
   return codigo ? `${numero} ${codigo}` : numero;
 }
 
+export function usdcATexto(monto: bigint): string {
+  const entero = (monto / UNIDAD_USDC).toString();
+  const decimales = (monto % UNIDAD_USDC).toString().padStart(DECIMALES_USDC, '0').replace(/0+$/, '');
+  return decimales ? `${entero},${decimales}` : entero;
+}
+
 export function formatearUsdc(monto: bigint): string {
   return formatearMonto(monto, 'USDC');
 }

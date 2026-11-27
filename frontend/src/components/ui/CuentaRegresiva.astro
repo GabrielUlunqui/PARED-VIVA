@@ -1,0 +1,28 @@
+---
+interface Props {
+  id: string;
+}
+
+const { id } = Astro.props;
+---
+
+<span id={id} class="cuenta-regresiva">—</span>
+
+<script>
+  // TODO [C1]: formato definitivo. Uso: el.dataset.hasta = timestamp en segundos.
+  function actualizar() {
+    document.querySelectorAll<HTMLElement>('.cuenta-regresiva[data-hasta]').forEach((el) => {
+      const restante = Number(el.dataset.hasta) - Math.floor(Date.now() / 1000);
+      if (restante <= 0) {
+        el.textContent = 'Finalizada';
+        return;
+      }
+      const dias = Math.floor(restante / 86400);
+      const horas = Math.floor((restante % 86400) / 3600);
+      const minutos = Math.floor((restante % 3600) / 60);
+      el.textContent = `${dias}d ${horas}h ${minutos}m`;
+    });
+  }
+  actualizar();
+  setInterval(actualizar, 30_000);
+</script>

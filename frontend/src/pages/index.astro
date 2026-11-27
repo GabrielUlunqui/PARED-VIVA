@@ -1,0 +1,36 @@
+---
+import Base from '../layouts/Base.astro';
+import MuralGrid from '../components/mural/MuralGrid.astro';
+import Progreso from '../components/mural/Progreso.astro';
+import DonarModal from '../components/donar/DonarModal.astro';
+---
+
+<Base>
+  <section class="hero">
+    <h1>Pared Viva</h1>
+    <p>Adoptá un ladrillo, dejá un recuerdo y ayudá a restaurar el mural del barrio.</p>
+  </section>
+
+  <Progreso />
+  <MuralGrid />
+
+  <section class="como-funciona">
+    <h2>Cómo funciona</h2>
+    <ol>
+      <li>Elegís un ladrillo libre del mural.</li>
+      <li>Dejás un recuerdo y donás en USDC.</li>
+      <li>Los fondos se liberan por hitos cuando aprueban 2 de 3 firmantes. Si no se llega a la meta, recuperás tu aporte.</li>
+    </ol>
+  </section>
+
+  <DonarModal />
+</Base>
+
+<style>
+  .hero h1 {
+    margin-bottom: 0;
+  }
+  .como-funciona {
+    margin-top: calc(var(--espacio) * 2);
+  }
+</style>

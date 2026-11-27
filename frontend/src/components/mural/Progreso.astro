@@ -1,0 +1,39 @@
+---
+import BarraProgreso from '../ui/BarraProgreso.astro';
+import CuentaRegresiva from '../ui/CuentaRegresiva.astro';
+---
+
+<section class="progreso">
+  <p><strong data-recaudado>—</strong> de <span data-meta>—</span></p>
+  <BarraProgreso id="barra-progreso" />
+  <p>Estado: <span data-estado>—</span> · Termina en <CuentaRegresiva id="cuenta-campania" /></p>
+</section>
+
+<script>
+  import { datos } from '../../lib/datos';
+  import { escuchar } from '../../lib/eventos';
+  import { formatearUsdc } from '../../lib/tipos';
+
+  const raiz = document.querySelector('.progreso') as HTMLElement;
+  const relleno = document.querySelector('#barra-progreso .relleno') as HTMLElement;
+
+  async function actualizar() {
+    const c = await datos.obtenerCampania();
+    const porcentaje = Math.min(100, Number((c.recaudado * 100n) / c.meta));
+    raiz.querySelector('[data-recaudado]')!.textContent = formatearUsdc(c.recaudado);
+    raiz.querySelector('[data-meta]')!.textContent = formatearUsdc(c.meta);
+    raiz.querySelector('[data-estado]')!.textContent = c.estado;
+    (document.getElementById('cuenta-campania') as HTMLElement).dataset.hasta = String(c.fechaLimite);
+    relleno.style.width = `${porcentaje}%`;
+  }
+
+  actualizar();
+  datos.suscribirDonaciones(actualizar);
+  escuchar('pv:donacion-confirmada', actualizar);
+</script>
+
+<style>
+  .progreso {
+    margin: var(--espacio) 0;
+  }
+</style>

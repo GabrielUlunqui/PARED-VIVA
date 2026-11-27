@@ -1,0 +1,67 @@
+<div id="mural" class="mural" aria-label="Mural de ladrillos"></div>
+
+<script>
+  import { datos } from '../../lib/datos';
+  import { emitir, escuchar } from '../../lib/eventos';
+  import type { Ladrillo } from '../../lib/tipos';
+
+  // TODO [C2]: usar la foto real del mural (public/mural.jpg) recortada por ladrillo, tooltip y animación.
+  const mural = document.getElementById('mural') as HTMLDivElement;
+  const celdas = new Map<number, HTMLButtonElement>();
+  const ocupados = new Set<number>();
+
+  function pintar(l: Ladrillo) {
+    ocupados.add(l.id);
+    const celda = celdas.get(l.id);
+    if (!celda) return;
+    celda.classList.add('adoptado');
+    celda.style.setProperty('--tono', String((l.id * 37) % 360));
+    celda.title = `Ladrillo #${l.id}`;
+  }
+
+  async function iniciar() {
+    const [campania, ladrillos] = await Promise.all([datos.obtenerCampania(), datos.obtenerLadrillos()]);
+    mural.style.setProperty('--columnas', String(campania.columnas));
+
+    for (let id = 0; id < campania.filas * campania.columnas; id++) {
+      const celda = document.createElement('button');
+      celda.type = 'button';
+      celda.className = 'ladrillo';
+      celda.title = `Adoptá el ladrillo #${id}`;
+      celda.addEventListener('click', () => {
+        if (ocupados.has(id)) window.location.href = `/ladrillo/${id}`;
+        else emitir('pv:ladrillo-seleccionado', { id });
+      });
+      celdas.set(id, celda);
+      mural.append(celda);
+    }
+
+    ladrillos.forEach(pintar);
+    datos.suscribirDonaciones(pintar);
+    escuchar('pv:donacion-confirmada', ({ ladrillo }) => pintar(ladrillo));
+  }
+
+  iniciar();
+</script>
+
+<style>
+  .mural {
+    display: grid;
+    grid-template-columns: repeat(var(--columnas, 30), 1fr);
+    gap: 2px;
+    width: 100%;
+  }
+  .mural :global(.ladrillo) {
+    aspect-ratio: 2 / 1;
+    border: none;
+    padding: 0;
+    background: var(--color-libre);
+    cursor: pointer;
+  }
+  .mural :global(.ladrillo.adoptado) {
+    background: hsl(var(--tono, 20) 65% 55%);
+  }
+  .mural :global(.ladrillo:hover) {
+    outline: 2px solid var(--color-texto);
+  }
+</style>

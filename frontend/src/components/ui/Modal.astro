@@ -1,0 +1,49 @@
+---
+interface Props {
+  id: string;
+  titulo: string;
+}
+
+const { id, titulo } = Astro.props;
+---
+
+<dialog id={id} class="modal">
+  <header>
+    <h2>{titulo}</h2>
+    <button type="button" class="cerrar" aria-label="Cerrar" data-cerrar-modal>×</button>
+  </header>
+  <slot />
+</dialog>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-cerrar-modal]').forEach((boton) => {
+    boton.addEventListener('click', () => boton.closest('dialog')?.close());
+  });
+</script>
+
+<style>
+  .modal {
+    border: none;
+    border-radius: var(--radio);
+    padding: calc(var(--espacio) * 1.5);
+    max-width: min(90vw, 480px);
+    width: 100%;
+  }
+  .modal::backdrop {
+    background: rgb(0 0 0 / 0.5);
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  h2 {
+    margin: 0;
+  }
+  .cerrar {
+    border: none;
+    background: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+  }
+</style>

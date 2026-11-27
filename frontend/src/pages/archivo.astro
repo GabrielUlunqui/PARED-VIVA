@@ -1,0 +1,40 @@
+---
+import Base from '../layouts/Base.astro';
+import Tarjeta from '../components/ui/Tarjeta.astro';
+import { datos } from '../lib/datos';
+import { leerRecuerdo } from '../lib/ipfs';
+
+export const prerender = false;
+
+// TODO [C5]: galería definitiva (imágenes, paginación, estados vacíos y de carga).
+const ladrillos = (await datos.obtenerLadrillos()).sort((a, b) => b.fecha - a.fecha);
+const recuerdos = await Promise.all(ladrillos.slice(0, 24).map(async (l) => ({ l, r: await leerRecuerdo(l.recuerdoCid) })));
+---
+
+<Base titulo="Archivo">
+  <h1>Archivo de la memoria</h1>
+  <div class="galeria">
+    {
+      recuerdos.map(({ l, r }) => (
+        <a href={`/ladrillo/${l.id}`}>
+          <Tarjeta>
+            <p>{r.texto}</p>
+            <small>{r.alias ?? 'Anónimo'} · Ladrillo #{l.id}</small>
+          </Tarjeta>
+        </a>
+      ))
+    }
+  </div>
+</Base>
+
+<style>
+  .galeria {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--espacio);
+  }
+  .galeria a {
+    color: inherit;
+    text-decoration: none;
+  }
+</style>

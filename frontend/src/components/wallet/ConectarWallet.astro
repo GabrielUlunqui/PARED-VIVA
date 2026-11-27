@@ -1,0 +1,19 @@
+<button id="conectar-wallet" class="conectar-wallet" type="button">Conectar wallet</button>
+
+<script>
+  import { emitir } from '../../lib/eventos';
+  import { abreviar, conectar } from '../../lib/stellar/wallet';
+  import { traducirError } from '../../lib/stellar/errores';
+
+  // TODO [B2]: restaurar la conexión guardada y mostrar estado de red.
+  const boton = document.getElementById('conectar-wallet') as HTMLButtonElement;
+  boton.addEventListener('click', async () => {
+    try {
+      const direccion = await conectar();
+      boton.textContent = abreviar(direccion);
+      emitir('pv:wallet-cambiada', { direccion });
+    } catch (e) {
+      alert(e instanceof Error && e.message.startsWith('TODO') ? e.message : traducirError(e));
+    }
+  });
+</script>

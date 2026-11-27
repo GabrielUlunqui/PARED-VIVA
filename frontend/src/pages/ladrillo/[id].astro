@@ -1,0 +1,36 @@
+---
+import Base from '../../layouts/Base.astro';
+import { datos } from '../../lib/datos';
+import { leerRecuerdo, urlGateway } from '../../lib/ipfs';
+import { formatearUsdc } from '../../lib/tipos';
+
+export const prerender = false;
+
+const id = Number(Astro.params.id);
+const ladrillo = Number.isInteger(id) ? await datos.obtenerLadrillo(id) : null;
+const recuerdo = ladrillo ? await leerRecuerdo(ladrillo.recuerdoCid) : null;
+
+// TODO [C5]: posición en el mural, imagen del recuerdo, link a la transacción.
+---
+
+<Base titulo={`Ladrillo #${Astro.params.id}`}>
+  {
+    ladrillo && recuerdo ? (
+      <article>
+        <h1>Ladrillo #{ladrillo.id}</h1>
+        <blockquote>{recuerdo.texto}</blockquote>
+        <p>{recuerdo.alias ?? 'Anónimo'} · {new Date(ladrillo.fecha * 1000).toLocaleDateString('es-AR')}</p>
+        <p>Aporte: {formatearUsdc(ladrillo.monto)}</p>
+        <p>Donante: <code>{ladrillo.donante}</code></p>
+        <p>
+          Recuerdo anclado on-chain: <a href={urlGateway(ladrillo.recuerdoCid)}>{ladrillo.recuerdoCid}</a>
+        </p>
+      </article>
+    ) : (
+      <>
+        <h1>Ladrillo libre</h1>
+        <p>Este ladrillo todavía no fue adoptado. <a href="/">Volver al mural</a></p>
+      </>
+    )
+  }
+</Base>

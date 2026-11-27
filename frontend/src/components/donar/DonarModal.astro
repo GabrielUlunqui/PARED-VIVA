@@ -1,0 +1,20 @@
+---
+import Modal from '../ui/Modal.astro';
+---
+
+<Modal id="modal-donar" titulo="Adoptá un ladrillo">
+  <p>Ladrillo <strong data-donar-id>—</strong></p>
+  <p>TODO [B5]: recuerdo (texto, imagen, alias) → subirRecuerdo → firmar donar → confirmación.</p>
+</Modal>
+
+<script>
+  import { escuchar } from '../../lib/eventos';
+
+  const modal = document.getElementById('modal-donar') as HTMLDialogElement;
+  const etiquetaId = modal.querySelector('[data-donar-id]') as HTMLElement;
+
+  escuchar('pv:ladrillo-seleccionado', ({ id }) => {
+    etiquetaId.textContent = `#${id}`;
+    modal.showModal();
+  });
+</script>

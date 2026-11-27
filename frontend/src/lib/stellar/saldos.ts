@@ -1,8 +1,6 @@
-import { Asset, Keypair, rpc, xdr } from '@stellar/stellar-sdk';
-import { ASSET_USDC, RED } from '../../contracts/config';
-
-const servidor = new rpc.Server(RED.rpcUrl);
-const USDC = new Asset(ASSET_USDC.codigo, ASSET_USDC.emisor);
+import { Keypair, xdr } from '@stellar/stellar-sdk';
+import { RED } from '../../contracts/config';
+import { servidorRpc, USDC } from './clasicas';
 
 // `null`: la cuenta no existe en la red (xlm) o no tiene trustline (usdc).
 export interface Saldos {
@@ -12,7 +10,7 @@ export interface Saldos {
 
 export async function leerSaldos(direccion: string): Promise<Saldos> {
   const accountId = Keypair.fromPublicKey(direccion).xdrAccountId();
-  const { entries } = await servidor.getLedgerEntries(
+  const { entries } = await servidorRpc.getLedgerEntries(
     xdr.LedgerKey.account(new xdr.LedgerKeyAccount({ accountId })),
     xdr.LedgerKey.trustline(new xdr.LedgerKeyTrustLine({ accountId, asset: USDC.toTrustLineXdrObject() })),
   );

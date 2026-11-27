@@ -1,5 +1,14 @@
 <div class="wallet" id="wallet">
-  <button id="conectar-wallet" class="conectar-wallet" type="button">Conectar wallet</button>
+  <button
+    id="conectar-wallet"
+    class="conectar-wallet"
+    type="button"
+    aria-haspopup="dialog"
+    aria-expanded="false"
+    aria-controls="wallet-opciones"
+  >
+    Conectar wallet
+  </button>
   <button
     id="wallet-chip"
     class="chip"
@@ -17,9 +26,22 @@
     <span class="flecha" aria-hidden="true">▾</span>
   </button>
 
+  <div id="wallet-opciones" class="panel cartel" role="dialog" aria-label="Elegí una wallet" hidden>
+    <span class="etiqueta">Elegí una wallet</span>
+    <button type="button" class="opcion" data-opcion-freighter>
+      <strong>Freighter</strong>
+      <small>Extensión del navegador, en Testnet.</small>
+    </button>
+    <button type="button" class="opcion" data-opcion-prueba>
+      <strong data-prueba-titulo>Crear wallet de prueba</strong>
+      <small data-prueba-detalle></small>
+    </button>
+    <p class="nota" data-progreso role="status" hidden></p>
+  </div>
+
   <div id="wallet-panel" class="panel cartel" role="dialog" aria-label="Tu wallet" hidden>
     <div class="panel-cabecera">
-      <span class="etiqueta">Tu wallet · Testnet</span>
+      <span class="etiqueta" data-tipo-wallet>Tu wallet · Testnet</span>
       <button type="button" class="icono" data-refrescar title="Actualizar saldos" aria-label="Actualizar saldos">↻</button>
     </div>
 
@@ -41,6 +63,10 @@
 
     <p class="nota" data-nota hidden></p>
     <button type="button" class="boton-ladrillo fondear" data-fondear hidden>Fondear con Friendbot</button>
+    <button type="button" class="boton-ladrillo fondear" data-pedir-usdc hidden></button>
+    <small class="pista" data-pista-prueba hidden>
+      La clave de esta wallet vive solo en este navegador. Usala únicamente para probar en testnet.
+    </small>
 
     <div class="acciones">
       <a data-explorador target="_blank" rel="noopener noreferrer">Ver en stellar.expert ↗</a>
@@ -54,43 +80,68 @@
 <script>
   import { RED } from '../../contracts/config';
   import { emitir, escuchar } from '../../lib/eventos';
+  import { MONTO_GRIFO_USDC } from '../../lib/stellar/clasicas';
   import { traducirError } from '../../lib/stellar/errores';
   import { fondearConFriendbot, leerSaldos, type Saldos } from '../../lib/stellar/saldos';
-  import { abreviar, conectar, desconectar, direccionActual, observarCambios, redCorrecta } from '../../lib/stellar/wallet';
-  import { formatearMonto } from '../../lib/tipos';
+  import {
+    abreviar,
+    conectar,
+    conectarPrueba,
+    desconectar,
+    direccionActual,
+    observarCambios,
+    redCorrecta,
+    tipoConectada,
+    type TipoWallet,
+  } from '../../lib/stellar/wallet';
+  import { pedirUsdcPrueba, walletPrueba, type EtapaPrueba } from '../../lib/stellar/wallet-prueba';
+  import { formatearMonto, UNIDAD_USDC } from '../../lib/tipos';
 
   const INTERVALO_SALDOS_MS = 30_000;
+  const USDC_BAJO = 10n * UNIDAD_USDC;
+  const TEXTO_PEDIR_USDC = `Pedir ${MONTO_GRIFO_USDC} USDC de prueba`;
+  const ETAPAS_PRUEBA: Record<EtapaPrueba, string> = {
+    fondeando: 'Creando la cuenta y fondeándola con XLM (Friendbot)…',
+    trustline: 'Habilitando USDC en la wallet…',
+    usdc: `Pidiendo ${MONTO_GRIFO_USDC} USDC de prueba…`,
+  };
 
   const raiz = document.getElementById('wallet') as HTMLDivElement;
   const boton = document.getElementById('conectar-wallet') as HTMLButtonElement;
   const chip = document.getElementById('wallet-chip') as HTMLButtonElement;
   const panel = document.getElementById('wallet-panel') as HTMLDivElement;
+  const opciones = document.getElementById('wallet-opciones') as HTMLDivElement;
   const aviso = document.getElementById('wallet-aviso') as HTMLSpanElement;
   const $ = <T extends HTMLElement>(sel: string) => raiz.querySelector(sel) as T;
   const refrescar = $<HTMLButtonElement>('[data-refrescar]');
   const copiar = $<HTMLButtonElement>('[data-copiar]');
   const fondear = $<HTMLButtonElement>('[data-fondear]');
+  const pedirUsdc = $<HTMLButtonElement>('[data-pedir-usdc]');
   const nota = $<HTMLParagraphElement>('[data-nota]');
+  const progreso = $<HTMLParagraphElement>('[data-progreso]');
+  const opcionFreighter = $<HTMLButtonElement>('[data-opcion-freighter]');
+  const opcionPrueba = $<HTMLButtonElement>('[data-opcion-prueba]');
 
   let direccion: string | null = null;
+  let tipo: TipoWallet | null = null;
   let saldos: Saldos | null = null;
   let errorSaldos = false;
 
-  function mostrarAviso(texto: string | null) {
-    aviso.hidden = !texto;
-    aviso.textContent = texto ?? '';
-  }
+  pedirUsdc.textContent = TEXTO_PEDIR_USDC;
 
-  function mostrarNota(texto: string | null) {
-    nota.hidden = !texto;
-    nota.textContent = texto ?? '';
+  function mostrarTexto(el: HTMLElement, texto: string | null) {
+    el.hidden = !texto;
+    el.textContent = texto ?? '';
   }
+  const mostrarAviso = (texto: string | null) => mostrarTexto(aviso, texto);
+  const mostrarNota = (texto: string | null) => mostrarTexto(nota, texto);
 
   function pintarSaldos() {
     const chipSaldo = $('[data-chip-saldo]');
     const usdc = $('[data-saldo-usdc]');
     const xlm = $('[data-saldo-xlm]');
     fondear.hidden = true;
+    pedirUsdc.hidden = true;
     if (!saldos) {
       chipSaldo.textContent = errorSaldos ? 'Saldo no disponible' : 'Cargando…';
       usdc.textContent = xlm.textContent = '—';
@@ -107,8 +158,12 @@
       return;
     }
     chipSaldo.textContent = `${formatearMonto(enUsdc ?? 0n, 'USDC')} · ${formatearMonto(enXlm, 'XLM', 0)}`;
+    pedirUsdc.hidden = !(tipo === 'prueba' && enUsdc !== null && enUsdc < USDC_BAJO);
+    if (enUsdc !== null) return mostrarNota(null);
     mostrarNota(
-      enUsdc === null ? 'Tu wallet todavía no acepta USDC. Agregá el asset USDC en Freighter (Manage assets).' : null,
+      tipo === 'prueba'
+        ? 'Falta habilitar USDC. Desconectá y elegí «Usar mi wallet de prueba» para terminar la configuración.'
+        : 'Tu wallet todavía no acepta USDC. En Freighter tocá «+ Add token» y agregá el USDC de la app.',
     );
   }
 
@@ -130,24 +185,36 @@
     pintarSaldos();
   }
 
-  function abrirPanel(abrir: boolean) {
-    panel.hidden = !abrir;
-    chip.setAttribute('aria-expanded', String(abrir));
-    if (abrir) refrescarSaldos();
+  function abrir(cual: HTMLElement | null) {
+    panel.hidden = cual !== panel;
+    opciones.hidden = cual !== opciones;
+    chip.setAttribute('aria-expanded', String(cual === panel));
+    boton.setAttribute('aria-expanded', String(cual === opciones));
+    if (cual === panel) refrescarSaldos();
+    if (cual === opciones) {
+      const existente = !!walletPrueba();
+      $('[data-prueba-titulo]').textContent = existente ? 'Usar mi wallet de prueba' : 'Crear wallet de prueba';
+      $('[data-prueba-detalle]').textContent = existente
+        ? 'La que ya creaste en este navegador.'
+        : `Sin instalar nada: se guarda en este navegador y recibe XLM y ${MONTO_GRIFO_USDC} USDC de testnet.`;
+    }
   }
 
   function actualizar(nueva: string | null, redOk = true, notificar = true) {
     const cambio = nueva !== direccion;
     direccion = nueva;
+    tipo = direccion ? tipoConectada() : null;
     boton.hidden = !!direccion;
     chip.hidden = !direccion;
+    $('[data-pista-prueba]').hidden = tipo !== 'prueba';
     if (direccion) {
       $('[data-direccion-corta]').textContent = abreviar(direccion);
       $('[data-direccion-completa]').textContent = direccion;
+      $('[data-tipo-wallet]').textContent = tipo === 'prueba' ? 'Wallet de prueba · Testnet' : 'Freighter · Testnet';
       $<HTMLAnchorElement>('[data-explorador]').href = `${RED.explorador}/account/${direccion}`;
       chip.title = direccion;
     } else {
-      abrirPanel(false);
+      abrir(null);
     }
     mostrarAviso(direccion && !redOk ? 'Cambiá Freighter a Testnet' : null);
     if (!cambio) return;
@@ -158,19 +225,40 @@
     if (notificar) emitir('pv:wallet-cambiada', { direccion });
   }
 
-  boton.addEventListener('click', async () => {
-    boton.disabled = true;
+  async function conectarCon(accion: () => Promise<void>) {
+    opcionFreighter.disabled = opcionPrueba.disabled = true;
+    mostrarAviso(null);
     try {
-      actualizar(await conectar());
+      await accion();
     } catch (e) {
+      mostrarTexto(progreso, null);
       mostrarAviso(traducirError(e));
     } finally {
-      boton.disabled = false;
+      opcionFreighter.disabled = opcionPrueba.disabled = false;
     }
-  });
+  }
 
-  chip.addEventListener('click', () => abrirPanel(chip.getAttribute('aria-expanded') !== 'true'));
+  boton.addEventListener('click', () => abrir(opciones.hidden ? opciones : null));
+  chip.addEventListener('click', () => abrir(panel.hidden ? panel : null));
   refrescar.addEventListener('click', refrescarSaldos);
+
+  opcionFreighter.addEventListener('click', () =>
+    conectarCon(async () => {
+      actualizar(await conectar());
+    }),
+  );
+
+  opcionPrueba.addEventListener('click', () =>
+    conectarCon(async () => {
+      const { direccion: nueva, avisoUsdc } = await conectarPrueba((etapa) =>
+        mostrarTexto(progreso, ETAPAS_PRUEBA[etapa]),
+      );
+      mostrarTexto(progreso, null);
+      actualizar(nueva);
+      abrir(panel);
+      if (avisoUsdc) mostrarNota(avisoUsdc);
+    }),
+  );
 
   $('[data-desconectar]').addEventListener('click', () => {
     desconectar();
@@ -184,28 +272,33 @@
     setTimeout(() => (copiar.textContent = 'Copiar'), 1500);
   });
 
-  fondear.addEventListener('click', async () => {
+  async function accionDelPanel(el: HTMLButtonElement, enCurso: string, accion: (d: string) => Promise<void>) {
     if (!direccion) return;
-    fondear.disabled = true;
-    fondear.textContent = 'Fondeando…';
+    const texto = el.textContent;
+    el.disabled = true;
+    el.textContent = enCurso;
     try {
-      await fondearConFriendbot(direccion);
+      await accion(direccion);
       await refrescarSaldos();
-    } catch {
-      mostrarNota('Friendbot no pudo fondear la cuenta. Probá de nuevo en un rato.');
+    } catch (e) {
+      mostrarNota(traducirError(e));
     } finally {
-      fondear.disabled = false;
-      fondear.textContent = 'Fondear con Friendbot';
+      el.disabled = false;
+      el.textContent = texto;
     }
-  });
+  }
+
+  fondear.addEventListener('click', () => accionDelPanel(fondear, 'Fondeando…', fondearConFriendbot));
+  pedirUsdc.addEventListener('click', () => accionDelPanel(pedirUsdc, 'Pidiendo USDC…', pedirUsdcPrueba));
 
   document.addEventListener('click', (e) => {
-    if (!panel.hidden && !raiz.contains(e.target as Node)) abrirPanel(false);
+    if (!raiz.contains(e.target as Node)) abrir(null);
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape' || panel.hidden) return;
-    abrirPanel(false);
-    chip.focus();
+    if (e.key !== 'Escape' || (panel.hidden && opciones.hidden)) return;
+    const foco = panel.hidden ? boton : chip;
+    abrir(null);
+    foco.focus();
   });
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) refrescarSaldos();
@@ -252,7 +345,8 @@
   .chip[hidden],
   .panel[hidden],
   .nota[hidden],
-  .fondear[hidden] {
+  .fondear[hidden],
+  .pista[hidden] {
     display: none;
   }
 
@@ -431,6 +525,36 @@
   .fondear:disabled {
     opacity: 0.6;
     cursor: wait;
+  }
+
+  .opcion {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.7rem 0.8rem;
+    background: var(--color-muro);
+    border: 2px solid var(--color-junta);
+    color: var(--color-texto);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .opcion:hover:not(:disabled) {
+    border-color: var(--color-rosa);
+    box-shadow: 0 0 14px -4px var(--color-rosa);
+  }
+  .opcion:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+  .opcion small {
+    font-size: 0.78rem;
+    color: var(--color-tenue);
+  }
+  .pista {
+    font-size: 0.72rem;
+    color: var(--color-tenue);
   }
 
   .acciones {

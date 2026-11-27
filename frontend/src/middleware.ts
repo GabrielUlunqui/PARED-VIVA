@@ -6,7 +6,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   'font-src https://fonts.gstatic.com',
   "img-src 'self' data: https://gateway.pinata.cloud",
-  "connect-src 'self' https://soroban-testnet.stellar.org https://gateway.pinata.cloud",
+  "connect-src 'self' https://soroban-testnet.stellar.org https://friendbot.stellar.org https://gateway.pinata.cloud",
   "frame-ancestors 'none'",
   "base-uri 'self'",
 ].join('; ');

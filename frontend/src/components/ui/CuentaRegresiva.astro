@@ -4,25 +4,52 @@ interface Props {
 }
 
 const { id } = Astro.props;
+const partes = [
+  { clave: 'dias', texto: 'días' },
+  { clave: 'horas', texto: 'horas' },
+  { clave: 'minutos', texto: 'min' },
+  { clave: 'segundos', texto: 'seg' },
+];
 ---
 
-<span id={id} class="cuenta-regresiva">—</span>
+<div id={id} class="cuenta-regresiva grid grid-cols-4 gap-2 text-center" role="timer" aria-live="off">
+  {
+    partes.map((p) => (
+      <div class="caja p-2 md:p-3">
+        <p class="m-0 font-display text-3xl text-ambar md:text-4xl" data-parte={p.clave}>
+          --
+        </p>
+        <p class="m-0 text-[0.65rem] uppercase tracking-widest text-white/50">{p.texto}</p>
+      </div>
+    ))
+  }
+  <p class="finalizada col-span-4 m-0 font-display text-3xl text-white/70" hidden>Campaña finalizada</p>
+</div>
 
 <script>
-  // TODO [C1]: formato definitivo. Uso: el.dataset.hasta = timestamp en segundos.
-  function actualizar() {
-    document.querySelectorAll<HTMLElement>('.cuenta-regresiva[data-hasta]').forEach((el) => {
-      const restante = Number(el.dataset.hasta) - Math.floor(Date.now() / 1000);
-      if (restante <= 0) {
-        el.textContent = 'Finalizada';
-        return;
-      }
-      const dias = Math.floor(restante / 86400);
-      const horas = Math.floor((restante % 86400) / 3600);
-      const minutos = Math.floor((restante % 3600) / 60);
-      el.textContent = `${dias}d ${horas}h ${minutos}m`;
+  const dosCifras = (n: number) => String(n).padStart(2, '0');
+
+  function actualizar(el: HTMLElement) {
+    if (!el.dataset.hasta) return;
+    const restante = Number(el.dataset.hasta) - Math.floor(Date.now() / 1000);
+    const terminada = restante <= 0;
+    el.querySelectorAll<HTMLElement>('.caja').forEach((c) => (c.hidden = terminada));
+    (el.querySelector('.finalizada') as HTMLElement).hidden = !terminada;
+    if (terminada) return;
+    const valores: Record<string, number> = {
+      dias: Math.floor(restante / 86400),
+      horas: Math.floor((restante % 86400) / 3600),
+      minutos: Math.floor((restante % 3600) / 60),
+      segundos: restante % 60,
+    };
+    el.querySelectorAll<HTMLElement>('[data-parte]').forEach((p) => {
+      p.textContent = dosCifras(valores[p.dataset.parte ?? ''] ?? 0);
     });
   }
-  actualizar();
-  setInterval(actualizar, 30_000);
+
+  document.querySelectorAll<HTMLElement>('.cuenta-regresiva').forEach((el) => {
+    new MutationObserver(() => actualizar(el)).observe(el, { attributes: true, attributeFilter: ['data-hasta'] });
+    actualizar(el);
+    setInterval(() => actualizar(el), 1000);
+  });
 </script>

@@ -1,10 +1,9 @@
-<div class="tarjeta"><slot /></div>
+---
+interface Props {
+  class?: string;
+}
 
-<style>
-  .tarjeta {
-    background: white;
-    border: 1px solid var(--color-borde);
-    border-radius: var(--radio);
-    padding: var(--espacio);
-  }
-</style>
+const { class: clase } = Astro.props;
+---
+
+<div class:list={['cartel tarjeta h-full', clase]}><slot /></div>

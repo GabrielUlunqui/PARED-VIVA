@@ -1,36 +1,195 @@
-/* TODO [C1]: definir identidad visual (paleta, tipografías). */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme {
+  --color-noche: #0a0812;
+  --color-carbon: #15121e;
+  --color-muro: #1a141f;
+  --color-junta: #3a2a30;
+  --color-ladrillo: #b5452f;
+  --color-rosa: #ff3d9a;
+  --color-violeta: #8b5cf6;
+  --color-ambar: #ffb547;
+  --color-celeste: #38e1ff;
+  --font-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  --font-sans: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
 :root {
-  --color-fondo: #f5f0e6;
-  --color-texto: #1f1b16;
-  --color-primario: #c4512b;
-  --color-secundario: #2f5d62;
-  --color-libre: #d9d4ca;
-  --color-borde: #b8b0a2;
-  --radio: 8px;
+  color-scheme: dark;
+  --color-fondo: #0a0812;
+  --color-superficie: #15121e;
+  --color-texto: #f3ede4;
+  --color-tenue: rgb(243 237 228 / 0.6);
+  --color-primario: #ff3d9a;
+  --color-secundario: #8b5cf6;
+  --color-acento: #ffb547;
+  --color-libre: #2b2633;
+  --color-borde: #3a2a30;
+  --color-ladrillo: #b5452f;
+  --radio: 0px;
   --espacio: 1rem;
-  --fuente: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fuente: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fuente-titulos: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  --ladrillera: linear-gradient(#0a0812 2px, transparent 2px), linear-gradient(90deg, #0a0812 2px, transparent 2px),
+    linear-gradient(90deg, #0a0812 2px, transparent 2px);
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--fuente);
+    background: var(--color-fondo);
+    color: var(--color-texto);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: calc(var(--espacio) * 2) var(--espacio);
+  }
+
+  main.completo {
+    max-width: none;
+    padding: 0;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--fuente-titulos);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+
+  h1 {
+    font-size: clamp(2.75rem, 6vw, 4.5rem);
+  }
+
+  h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+  }
+
+  a {
+    color: var(--color-acento);
+  }
+
+  code {
+    font-family: ui-monospace, 'Cascadia Mono', monospace;
+    font-size: 0.85em;
+    word-break: break-all;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-acento);
+    outline-offset: 2px;
+  }
 }
 
-body {
-  margin: 0;
-  font-family: var(--fuente);
-  background: var(--color-fondo);
-  color: var(--color-texto);
-  line-height: 1.5;
-}
+@layer components {
+  .ladrillera {
+    background-image: var(--ladrillera);
+    background-size: 100% 12px, 36px 24px, 36px 24px;
+    background-position: 0 0, 0 0, 18px 12px;
+    background-color: #8a3b2b;
+  }
 
-main {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: calc(var(--espacio) * 2) var(--espacio);
-}
+  .cartel {
+    position: relative;
+    background: linear-gradient(180deg, rgb(21 16 28 / 0.92), rgb(12 9 18 / 0.96));
+    border: 2px solid #5c2f26;
+    box-shadow: 8px 8px 0 #1e1218, inset 0 0 0 1px rgb(255 255 255 / 0.04);
+    padding: 2.25rem 1.5rem 1.5rem;
+  }
 
-a {
-  color: var(--color-secundario);
+  .cartel::before {
+    content: '';
+    position: absolute;
+    inset: -2px -2px auto -2px;
+    height: 14px;
+    background-image: var(--ladrillera);
+    background-size: 100% 12px, 36px 24px, 36px 24px;
+    background-position: 0 0, 0 0, 18px 12px;
+    background-color: #8a3b2b;
+    border-bottom: 2px solid #0a0812;
+  }
+
+  .cartel > * {
+    position: relative;
+  }
+
+  .neon {
+    text-shadow: 0 0 6px currentColor, 0 0 18px currentColor;
+  }
+
+  .etiqueta {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    color: var(--color-tenue);
+  }
+
+  .boton-ladrillo {
+    background: var(--color-ladrillo);
+    color: #fff1e6;
+    font-weight: 700;
+    border: none;
+    border-bottom: 5px solid #6b2a1d;
+    box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.18);
+    transition: transform 0.15s, border-width 0.15s, background 0.2s, box-shadow 0.2s;
+  }
+
+  .boton-ladrillo:hover {
+    background: var(--color-rosa);
+    border-color: #9c1f5c;
+    box-shadow: 0 0 28px #ff3d9a88, inset 0 2px 0 rgb(255 255 255 / 0.25);
+  }
+
+  .boton-ladrillo:active {
+    transform: translateY(3px);
+    border-bottom-width: 2px;
+  }
+
+  .boton-neon {
+    background: transparent;
+    color: var(--color-rosa);
+    border: 2px solid currentColor;
+    text-shadow: 0 0 8px currentColor;
+    box-shadow: 0 0 12px -2px currentColor, inset 0 0 12px -4px currentColor;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .boton-neon:hover {
+    background: var(--color-rosa);
+    color: #fff;
+  }
+
+  .caja {
+    background: var(--color-muro);
+    border: 2px solid var(--color-junta);
+  }
+
+  .barra-ladrillos {
+    height: 14px;
+    background: var(--color-muro);
+    border: 2px solid var(--color-junta);
+    padding: 2px;
+  }
+
+  .barra-ladrillos > div {
+    height: 100%;
+    background-image: repeating-linear-gradient(90deg, transparent 0 14px, #0a0812 14px 16px),
+      linear-gradient(90deg, #8b5cf6, #ff3d9a, #ffb547);
+    transition: width 0.8s ease;
+  }
 }

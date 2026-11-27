@@ -4,9 +4,17 @@ import ConectarWallet from '../components/wallet/ConectarWallet.astro';
 
 interface Props {
   titulo?: string;
+  completo?: boolean;
 }
 
-const { titulo } = Astro.props;
+const { titulo, completo = false } = Astro.props;
+const ruta = Astro.url.pathname.replace(/\/$/, '') || '/';
+const enlaces = [
+  { href: '/', texto: 'Inicio' },
+  { href: '/archivo', texto: 'Archivo' },
+  { href: '/firmantes', texto: 'Firmantes' },
+  { href: '/mi-aporte', texto: 'Mi aporte' },
+];
 ---
 
 <!doctype html>
@@ -14,50 +22,79 @@ const { titulo } = Astro.props;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Adoptá un ladrillo, dejá un recuerdo y ayudá a restaurar el mural del barrio." />
+    <meta name="theme-color" content="#0a0812" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
     <title>{titulo ? `${titulo} · Pared Viva` : 'Pared Viva'}</title>
   </head>
   <body>
-    <header class="cabecera">
-      <a href="/" class="logo">Pared Viva</a>
-      <nav>
-        <a href="/">Inicio</a>
-        <a href="/archivo">Archivo</a>
-        <a href="/firmantes">Firmantes</a>
-        <a href="/mi-aporte">Mi aporte</a>
-      </nav>
-      <ConectarWallet />
+    <header class:list={['top-0 z-40 px-3 pt-3 md:px-4', completo ? 'fixed inset-x-0' : 'sticky']}>
+      <div class="cartel mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-3 !px-4 !pb-3 !pt-6 md:flex-nowrap md:!px-6">
+        <a href="/" class="font-display text-3xl tracking-wide text-white no-underline">
+          PARED <span class="neon text-rosa">VIVA</span>
+        </a>
+        <nav class="order-3 flex w-full justify-between border-t border-white/10 pt-3 text-xs uppercase tracking-[0.1em] md:order-none md:w-auto md:justify-start md:gap-8 md:border-0 md:pt-0 md:text-sm md:tracking-[0.2em]">
+          {
+            enlaces.map((e) => (
+              <a
+                href={e.href}
+                class:list={[
+                  'whitespace-nowrap no-underline',
+                  ruta === e.href ? 'neon text-ambar' : 'text-white/60 hover:text-white',
+                ]}
+                aria-current={ruta === e.href ? 'page' : undefined}
+              >
+                {e.texto}
+              </a>
+            ))
+          }
+        </nav>
+        <ConectarWallet />
+      </div>
     </header>
-    <main>
+    <main class:list={[{ completo }]}>
       <slot />
     </main>
-    <footer class="pie">Pared Viva · Construido en Stellar</footer>
+    <footer class="mt-16">
+      <div class="ladrillera h-6"></div>
+      <div class="flex flex-col items-center gap-1 py-8 text-center text-sm text-white/50">
+        <p class="m-0 font-display text-2xl tracking-wide text-white/80">PARED <span class="text-rosa">VIVA</span></p>
+        <p class="m-0">Memoria del barrio, ladrillo por ladrillo · Construido en Stellar</p>
+      </div>
+    </footer>
   </body>
 </html>
 
 <style>
-  .cabecera {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--espacio);
-    padding: var(--espacio);
-    border-bottom: 1px solid var(--color-borde);
-    flex-wrap: wrap;
-  }
-  .logo {
-    font-weight: 700;
-    text-decoration: none;
-    color: var(--color-primario);
-  }
-  nav {
-    display: flex;
-    gap: var(--espacio);
-  }
-  .pie {
-    text-align: center;
-    padding: var(--espacio);
+  header :global(.conectar-wallet) {
+    background: transparent;
+    color: var(--color-rosa);
+    border: 2px solid currentColor;
+    border-radius: 0;
+    padding: 0.5rem 1rem;
+    font: inherit;
     font-size: 0.875rem;
-    opacity: 0.7;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-shadow: 0 0 8px currentColor;
+    box-shadow: 0 0 12px -2px currentColor, inset 0 0 12px -4px currentColor;
+    cursor: pointer;
+  }
+  @media (max-width: 400px) {
+    header :global(.conectar-wallet) {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.75rem;
+    }
+  }
+  header :global(.conectar-wallet:hover) {
+    background: var(--color-rosa);
+    color: #fff;
   }
 </style>

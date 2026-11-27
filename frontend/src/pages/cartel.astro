@@ -1,0 +1,74 @@
+---
+import QRCode from 'qrcode';
+import '../styles/global.css';
+
+export const prerender = false;
+
+const destino = Astro.url.searchParams.get('url') ?? Astro.url.origin;
+const qr = await QRCode.toString(destino, { type: 'svg', margin: 1, color: { dark: '#0a0812', light: '#ffffff' } });
+const pasos = ['Escaneá el código con la cámara', 'Elegí un ladrillo libre del mural', 'Dejá tu recuerdo y sumá tu aporte'];
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>Cartel · Pared Viva</title>
+  </head>
+  <body>
+    <div class="hoja mx-auto flex flex-col">
+      <div class="ladrillera h-10"></div>
+      <div class="flex flex-1 flex-col items-center px-12 py-10 text-center">
+        <p class="m-0 font-display text-6xl tracking-wide">PARED <span class="neon text-rosa">VIVA</span></p>
+        <h1 class="m-0 mt-6 text-7xl leading-[0.95]">Esta pared<br /><span class="neon text-ambar">tiene memoria</span></h1>
+        <p class="m-0 mt-6 max-w-md text-xl text-white/75">Adoptá un ladrillo, dejá un recuerdo y ayudá a restaurar el mural del barrio.</p>
+        <div class="qr mt-10 w-72 border-8 border-white bg-white" set:html={qr} />
+        <ol class="m-0 mt-10 grid w-full list-none grid-cols-3 gap-4 p-0">
+          {
+            pasos.map((p, i) => (
+              <li class="caja p-4">
+                <p class="m-0 font-display text-4xl text-rosa">0{i + 1}</p>
+                <p class="m-0 text-sm">{p}</p>
+              </li>
+            ))
+          }
+        </ol>
+        <p class="m-0 mt-auto pt-8 text-sm text-white/50">{destino.replace(/^https?:\/\//, '')} · Construido en Stellar</p>
+      </div>
+      <div class="ladrillera h-10"></div>
+    </div>
+    <button type="button" class="imprimir boton-ladrillo fixed bottom-6 right-6 cursor-pointer px-6 py-3 uppercase" onclick="window.print()">Imprimir</button>
+  </body>
+</html>
+
+<style>
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .hoja {
+    width: 210mm;
+    min-height: 297mm;
+    background: var(--color-fondo);
+  }
+  .qr :global(svg) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  @media print {
+    .imprimir {
+      display: none;
+    }
+  }
+</style>

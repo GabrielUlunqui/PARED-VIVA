@@ -15,15 +15,19 @@ export function clienteParedViva(publicKey?: string): Promise<ClienteParedViva> 
   }
   const clave = publicKey ?? '';
   if (!clientes.has(clave)) {
-    const cliente = new Client({
+    // `restore` no está en el tipo ClientOptions pero el SDK lo propaga a cada
+    // llamada (spread de options): si el estado está archivado, restaura solo.
+    const opciones = {
       contractId: CONTRATOS.paredViva,
       rpcUrl: RED.rpcUrl,
       networkPassphrase: RED.passphrase,
+      restore: true,
       publicKey,
       signTransaction: publicKey
         ? async (xdr: string) => ({ signedTxXdr: await (await import('./wallet')).firmar(xdr), signerAddress: publicKey })
         : undefined,
-    });
+    };
+    const cliente = new Client(opciones);
     clientes.set(clave, Promise.resolve(cliente));
   }
   return clientes.get(clave)!;

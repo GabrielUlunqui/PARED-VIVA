@@ -71,7 +71,7 @@ const MONTO_INICIAL = '5';
   import { datos } from '../../lib/datos';
   import { emitir, escuchar } from '../../lib/eventos';
   import { MAX_IMAGEN_BYTES, TIPOS_IMAGEN, subirRecuerdo } from '../../lib/ipfs';
-  import { traducirError } from '../../lib/stellar/errores';
+  import { ErrorNegocio, traducirError } from '../../lib/stellar/errores';
   import { donar, urlTransaccion, type EtapaTx } from '../../lib/stellar/transacciones';
   import { conectarYAvisar } from '../../lib/stellar/sesion';
   import { direccionActual } from '../../lib/stellar/wallet';
@@ -178,7 +178,7 @@ const MONTO_INICIAL = '5';
     enviar.disabled = true;
     try {
       const donante = await obtenerDireccion();
-      if (await datos.obtenerLadrillo(id)) throw new Error('Error(Contract, #2)');
+      if (await datos.obtenerLadrillo(id)) throw new ErrorNegocio('Ese ladrillo ya fue adoptado. Elegí otro libre en el mural.');
 
       mostrar(estado, 'Guardando tu recuerdo…');
       const cid = await subirRecuerdo(texto.value.trim(), imagen.files?.[0], alias.value.trim() || undefined);

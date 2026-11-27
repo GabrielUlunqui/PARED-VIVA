@@ -16,6 +16,25 @@ function convertirLadrillo(l: LadrilloRed): Ladrillo {
   return { id: l.id, donante: l.donante, monto: l.monto, recuerdoCid: l.recuerdo, fecha: Number(l.fecha) };
 }
 
+// Memo corto para deduplicar lecturas repetidas en la misma carga de página
+// (MuralGrid y Progreso piden lo mismo). Se invalida al recibir una donación
+// o al completar una transacción propia.
+const TTL_MEMO_MS = 5000;
+const memos = new Map<string, { expira: number; promesa: Promise<unknown> }>();
+
+function memoizar<R>(clave: string, fn: () => Promise<R>): Promise<R> {
+  const ahora = Date.now();
+  const hit = memos.get(clave);
+  if (hit && hit.expira > ahora) return hit.promesa as Promise<R>;
+  const promesa = fn();
+  memos.set(clave, { expira: ahora + TTL_MEMO_MS, promesa });
+  return promesa;
+}
+
+export function invalidarCacheStellar(): void {
+  memos.clear();
+}
+
 async function campaniaRed(): Promise<Campania> {
   const cliente = await clienteParedViva();
   const { result: r } = await cliente.estado();
@@ -39,19 +58,22 @@ async function ladrillosRed(): Promise<Ladrillo[]> {
 }
 
 export const fuenteStellar: FuenteDatos = {
-  obtenerCampania: campaniaRed,
-  obtenerLadrillos: ladrillosRed,
+  obtenerCampania: () => memoizar('campania', campaniaRed),
+  obtenerLadrillos: () => memoizar('ladrillos', ladrillosRed),
   async obtenerLadrillo(id) {
     const cliente = await clienteParedViva();
     const { result } = await cliente.ladrillo({ id });
     return result ? convertirLadrillo(result) : null;
   },
   suscribirDonaciones(cb) {
-    return escucharDonacionesRed(cb);
+    return escucharDonacionesRed((l) => {
+      invalidarCacheStellar();
+      cb(l);
+    });
   },
   async obtenerHitos() {
     const cliente = await clienteParedViva();
-    const campania = await campaniaRed();
+    const campania = await fuenteStellar.obtenerCampania();
     const aprobaciones = await Promise.all(
       campania.hitos.map(async (_, hito) => (await cliente.aprobaciones({ hito })).result),
     );
@@ -66,7 +88,7 @@ export const fuenteStellar: FuenteDatos = {
     const [aporte, guardian, ladrillos] = await Promise.all([
       cliente.aporte({ donante: direccion }),
       cliente.es_guardian({ direccion }),
-      ladrillosRed(),
+      fuenteStellar.obtenerLadrillos(),
     ]);
     return {
       total: aporte.result,

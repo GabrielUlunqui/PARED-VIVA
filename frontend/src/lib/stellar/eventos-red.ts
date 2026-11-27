@@ -21,49 +21,65 @@ function convertirEvento(ev: rpc.Api.EventResponse): Ladrillo | null {
   };
 }
 
+// Poller compartido: un solo getEvents cada INTERVALO_POLLING_MS por página,
+// sin importar cuántos componentes se suscriban.
+const suscriptores = new Set<(l: Ladrillo) => void>();
+const vistos = new Set<string>();
+let cursor: string | undefined;
+let ledgerInicial: number | undefined;
+let temporizador: ReturnType<typeof setTimeout> | undefined;
+let sondeando = false;
+
+function procesar(eventos: rpc.Api.EventResponse[]): void {
+  for (const ev of eventos) {
+    if (vistos.has(ev.id)) continue;
+    vistos.add(ev.id);
+    const ladrillo = convertirEvento(ev);
+    if (ladrillo) for (const cb of suscriptores) cb(ladrillo);
+  }
+}
+
+async function sondear(): Promise<void> {
+  if (suscriptores.size === 0 || sondeando) return;
+  sondeando = true;
+  try {
+    const filtros = [{ type: 'contract' as const, contractIds: [CONTRATOS.paredViva], topics: [[TOPIC_DONACION, '*']] }];
+    if (cursor === undefined) {
+      if (ledgerInicial === undefined) ledgerInicial = (await servidor.getLatestLedger()).sequence;
+      const respuesta = await servidor.getEvents({ startLedger: ledgerInicial, filters: filtros, limit: 100 });
+      cursor = respuesta.cursor;
+      procesar(respuesta.events);
+    } else {
+      const respuesta = await servidor.getEvents({ cursor, filters: filtros, limit: 100 });
+      if (respuesta.cursor) cursor = respuesta.cursor;
+      procesar(respuesta.events);
+    }
+  } catch (e) {
+    console.warn('No se pudieron leer eventos del contrato; se reintenta', e);
+  } finally {
+    sondeando = false;
+  }
+  programar();
+}
+
+function programar(): void {
+  if (suscriptores.size > 0 && temporizador === undefined) {
+    temporizador = setTimeout(() => {
+      temporizador = undefined;
+      void sondear();
+    }, INTERVALO_POLLING_MS);
+  }
+}
+
 export function escucharDonacionesRed(cb: (l: Ladrillo) => void): () => void {
-  const filtros = [{ type: 'contract' as const, contractIds: [CONTRATOS.paredViva], topics: [[TOPIC_DONACION, '*']] }];
-  const vistos = new Set<string>();
-  let activo = true;
-  let cursor: string | undefined;
-  let ledgerInicial: number | undefined;
-  let temporizador: ReturnType<typeof setTimeout> | undefined;
-
-  const programar = () => {
-    if (activo) temporizador = setTimeout(sondear, INTERVALO_POLLING_MS);
-  };
-
-  async function sondear(): Promise<void> {
-    if (!activo) return;
-    try {
-      if (cursor === undefined) {
-        if (ledgerInicial === undefined) ledgerInicial = (await servidor.getLatestLedger()).sequence;
-        const respuesta = await servidor.getEvents({ startLedger: ledgerInicial, filters: filtros, limit: 100 });
-        cursor = respuesta.cursor;
-        procesar(respuesta.events);
-      } else {
-        const respuesta = await servidor.getEvents({ cursor, filters: filtros, limit: 100 });
-        if (respuesta.cursor) cursor = respuesta.cursor;
-        procesar(respuesta.events);
-      }
-    } catch (e) {
-      console.warn('No se pudieron leer eventos del contrato; se reintenta', e);
-    }
-    programar();
-  }
-
-  function procesar(eventos: rpc.Api.EventResponse[]): void {
-    for (const ev of eventos) {
-      if (vistos.has(ev.id)) continue;
-      vistos.add(ev.id);
-      const ladrillo = convertirEvento(ev);
-      if (ladrillo) cb(ladrillo);
-    }
-  }
-
-  void sondear();
+  const primero = suscriptores.size === 0;
+  suscriptores.add(cb);
+  if (primero) void sondear();
   return () => {
-    activo = false;
-    if (temporizador) clearTimeout(temporizador);
+    suscriptores.delete(cb);
+    if (suscriptores.size === 0 && temporizador !== undefined) {
+      clearTimeout(temporizador);
+      temporizador = undefined;
+    }
   };
 }

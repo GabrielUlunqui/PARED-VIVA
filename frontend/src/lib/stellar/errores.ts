@@ -36,7 +36,27 @@ export class ErrorWallet extends Error {
   }
 }
 
+/** Error con mensaje ya redactado para el usuario: traducirError lo devuelve tal cual. */
+export class ErrorNegocio extends Error {
+  constructor(mensaje: string) {
+    super(mensaje);
+    this.name = 'ErrorNegocio';
+  }
+}
+
+/** La transacción se firmó y se envió, pero falló al ejecutarse en la red. */
+export class ErrorTxFallida extends Error {
+  constructor(public estadoTx?: string) {
+    super(`La transacción se incluyó en la red pero falló (${estadoTx ?? 'error'}).`);
+    this.name = 'ErrorTxFallida';
+  }
+}
+
 export function traducirError(e: unknown): string {
+  if (e instanceof ErrorNegocio) return e.message;
+  if (e instanceof ErrorTxFallida) {
+    return 'La transacción se incluyó en la red pero el contrato la rechazó. No se movió tu dinero; probá de nuevo.';
+  }
   if (e instanceof ErrorWallet) return MENSAJES_WALLET[e.tipo];
   const mensaje = e instanceof Error ? e.message : String(e);
   const codigo = Number(mensaje.match(/Error\(Contract, #(\d+)\)/)?.[1]);

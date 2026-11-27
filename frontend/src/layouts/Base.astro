@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import ConectarWallet from '../components/wallet/ConectarWallet.astro';
+import { usandoEnsayo } from '../contracts/config';
 
 interface Props {
   titulo?: string;
@@ -35,7 +36,7 @@ const enlaces = [
   </head>
   <body>
     <p class="aviso-testnet fixed inset-x-0 bottom-0 z-50 m-0 bg-ambar px-3 py-1 text-center text-xs font-bold text-black">
-      Demo en Stellar testnet: sin dinero real, sin inversión ni rendimiento.
+      Demo en Stellar testnet: sin dinero real, sin inversión ni rendimiento.{usandoEnsayo && ' · Campaña de ensayo'}
     </p>
     <header class:list={['top-0 z-40 px-3 pt-3 md:px-4', completo ? 'fixed inset-x-0' : 'sticky']}>
       <div class="cartel mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-3 !px-4 !pb-3 !pt-6 md:flex-nowrap md:!px-6">

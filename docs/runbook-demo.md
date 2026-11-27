@@ -4,6 +4,15 @@ Este runbook es para la mañana de la presentación. La campaña oficial está e
 
 > **Estado preparado por el equipo:** la campaña quedó sembrada en **999/1.000 USDC** con 25 ladrillos ocupados. Cualquier donación en vivo de **1 USDC o más** alcanza la meta y la deja `Financiada` para mostrar la aprobación 2 de 3 del hito 0 (400 USDC al restaurador). Verificarlo igual la mañana de la demo porque el estado puede cambiar.
 
+## Campaña de ensayo
+
+Para probar Freighter, IPFS (`PINATA_JWT`) y la aprobación de hitos **sin tocar la campaña oficial**, hay una segunda instancia del mismo contrato con meta de 10 USDC (hitos 4/3/3 USDC, aporte mínimo 1 USDC):
+
+- ID: [`CCSMURJVJBEVNCULQTYHGQP7JTNWA5SZGYHQGI5WPBUV6TEQS7K2ZTTP`](https://stellar.expert/explorer/testnet/contract/CCSMURJVJBEVNCULQTYHGQP7JTNWA5SZGYHQGI5WPBUV6TEQS7K2ZTTP) (alias local `pared-viva-ensayo`).
+- En `frontend/.env`: `PUBLIC_CAMPANIA=ensayo` y reiniciar el dev server. La franja de testnet muestra "Campaña de ensayo".
+- Donando 10 USDC o más queda `Financiada` y se puede ensayar `/firmantes` (o por CLI: `stellar contract invoke --id pared-viva-ensayo --network testnet --source-account firmante1 -- aprobar_hito --firmante firmante1 --hito 0`).
+- **Antes de presentar, volver a `PUBLIC_CAMPANIA=oficial`** (o borrar la línea) y reiniciar el server.
+
 ## Regla de oro
 
 Después de dejar la campaña cerca de la meta, **no hacer donaciones de prueba en la campaña oficial**. Una sola donación pequeña puede completar la meta antes de tiempo y la demo pierde el momento “se alcanza la meta en vivo”. Para probar wallets/IPFS usar otra campaña o hacerlo antes de sembrar el estado final.

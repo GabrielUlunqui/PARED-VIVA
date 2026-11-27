@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pared Viva · Modelo 2C Grafiti neón</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Bebas+Neue&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-noche: #08070b;
+    --color-carbon: #141218;
+    --color-lima: #c6f432;
+    --color-naranja: #ff7a1a;
+    --color-rosa: #ff4d6d;
+    --font-marker: "Permanent Marker", cursive;
+    --font-display: "Bebas Neue", sans-serif;
+    --font-sans: "Space Grotesk", system-ui, sans-serif;
+  }
+  .neon { text-shadow: 0 0 6px currentColor, 0 0 20px currentColor, 0 0 48px currentColor; }
+</style>
+<script type="importmap">
+  { "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  } }
+</script>
+</head>
+<body class="bg-noche font-sans text-white antialiased">
+  <header class="fixed inset-x-0 top-0 z-30 border-b border-white/5 bg-noche/60 backdrop-blur-xl">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+      <a href="#" class="font-marker text-2xl text-lima neon">Pared Viva</a>
+      <nav class="hidden gap-6 font-display text-xl tracking-wider text-white/60 md:flex">
+        <a href="#" class="text-white">Inicio</a>
+        <a href="#archivo" class="hover:text-lima">Archivo</a>
+        <a href="#" class="hover:text-lima">Firmantes</a>
+        <a href="#" class="hover:text-lima">Mi aporte</a>
+      </nav>
+      <button class="-rotate-2 bg-naranja px-4 py-2 font-display text-lg tracking-wider text-noche shadow-[4px_4px_0_#c6f432] transition hover:rotate-0">Conectar wallet</button>
+    </div>
+  </header>
+
+  <section class="relative h-screen min-h-[640px] overflow-hidden">
+    <canvas id="tunel" class="absolute inset-0 h-full w-full cursor-ew-resize"></canvas>
+    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,#08070b_95%)]"></div>
+    <div class="pointer-events-none absolute inset-x-0 top-24 text-center">
+      <h1 class="font-marker text-6xl text-rosa neon md:text-8xl">¡Pintala vos!</h1>
+      <p class="mx-auto mt-3 w-fit rounded-full bg-noche/70 px-4 py-1 text-white/80">Arrastrá para mirar alrededor. Hacé click en un ladrillo apagado para tirarle pintura.</p>
+    </div>
+    <div class="absolute bottom-8 left-1/2 w-[min(92%,640px)] -translate-x-1/2 rounded-2xl border border-white/10 bg-carbon/80 p-5 backdrop-blur-xl">
+      <div class="flex items-center justify-between font-display text-xl tracking-wider">
+        <span class="text-lima neon">En vivo</span><span class="text-white/60">Faltan 12d 4h</span>
+      </div>
+      <div class="mt-2 flex items-end justify-between">
+        <p class="font-display text-6xl"><span id="recaudado">642</span><span class="text-2xl text-white/40"> / 1.000 USDC</span></p>
+        <button class="rotate-2 bg-lima px-5 py-3 font-display text-xl tracking-wider text-noche shadow-[4px_4px_0_#ff4d6d] transition hover:rotate-0">Adoptá uno</button>
+      </div>
+      <div class="mt-3 h-3 -skew-x-12 overflow-hidden bg-white/10"><div id="barra" class="h-full w-[64%] bg-gradient-to-r from-rosa via-naranja to-lima transition-all duration-700"></div></div>
+    </div>
+  </section>
+
+  <main class="mx-auto max-w-6xl px-4">
+    <section class="grid gap-8 py-24 md:grid-cols-3">
+      <article class="-rotate-1 border-2 border-lima p-6 shadow-[8px_8px_0_#c6f432] transition hover:rotate-0"><p class="font-marker text-5xl text-lima">1</p><h3 class="mt-2 font-display text-3xl tracking-wide">Elegí tu ladrillo</h3><p class="text-white/60">Desde 1 USDC, el que más te guste.</p></article>
+      <article class="rotate-1 border-2 border-rosa p-6 shadow-[8px_8px_0_#ff4d6d] transition hover:rotate-0"><p class="font-marker text-5xl text-rosa">2</p><h3 class="mt-2 font-display text-3xl tracking-wide">Firmalo con tu historia</h3><p class="text-white/60">Foto o texto anclado para siempre.</p></article>
+      <article class="-rotate-1 border-2 border-naranja p-6 shadow-[8px_8px_0_#ff7a1a] transition hover:rotate-0"><p class="font-marker text-5xl text-naranja">3</p><h3 class="mt-2 font-display text-3xl tracking-wide">El barrio controla</h3><p class="text-white/60">2 de 3 firmantes liberan cada pago.</p></article>
+    </section>
+
+    <section id="archivo" class="pb-24">
+      <h2 class="font-marker text-5xl text-naranja neon">Firmas en la pared</h2>
+      <div class="mt-10 columns-1 gap-5 sm:columns-2 lg:columns-3">
+        <article class="mb-5 break-inside-avoid bg-carbon p-5 [clip-path:polygon(0_0,100%_2%,98%_100%,2%_97%)]"><div class="h-40 bg-gradient-to-br from-rosa to-naranja"></div><p class="mt-4 font-marker text-xl">"Acá aprendí a andar en bici."</p><p class="mt-2 text-sm text-white/50">Marta · #214</p></article>
+        <article class="mb-5 break-inside-avoid bg-carbon p-5 [clip-path:polygon(2%_0,100%_0,97%_100%,0_98%)]"><p class="font-marker text-xl">"Mi abuelo ayudó a pintarlo en 1988."</p><p class="mt-2 text-sm text-white/50">Lucas · #87</p></article>
+        <article class="mb-5 break-inside-avoid bg-carbon p-5 [clip-path:polygon(0_2%,98%_0,100%_97%,1%_100%)]"><div class="h-56 bg-gradient-to-br from-lima to-emerald-700"></div><p class="mt-4 font-marker text-xl">"Las murgas arrancaban acá."</p><p class="mt-2 text-sm text-white/50">Anónimo · #402</p></article>
+        <article class="mb-5 break-inside-avoid bg-carbon p-5 [clip-path:polygon(1%_0,100%_3%,99%_100%,0_100%)]"><p class="font-marker text-xl">"Primer beso, frente al sol pintado."</p><p class="mt-2 text-sm text-white/50">Rosa · #33</p></article>
+        <article class="mb-5 break-inside-avoid bg-carbon p-5 [clip-path:polygon(0_0,99%_1%,100%_100%,2%_98%)]"><div class="h-32 bg-gradient-to-br from-naranja to-rosa"></div><p class="mt-4 font-marker text-xl">"Jugábamos a la pelota contra esta pared."</p><p class="mt-2 text-sm text-white/50">Javi · #150</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-white/10 py-8 text-center font-display text-lg tracking-wider text-white/40">Pared Viva · Construido en Stellar</footer>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+  import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+  import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+  const canvas = document.getElementById('tunel');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const escena = new THREE.Scene();
+  escena.background = new THREE.Color(0x08070b);
+  const camara = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
+  camara.position.set(0, 0, 0);
+
+  escena.add(new THREE.AmbientLight(0xffffff, 0.15));
+  const luz = new THREE.PointLight(0xffffff, 60, 30);
+  escena.add(luz);
+
+  const filas = 20, columnas = 60, radio = 14, alto = 0.55;
+  const total = filas * columnas;
+  const arco = (Math.PI * 2) / columnas;
+  const ladrillos = new THREE.InstancedMesh(new THREE.BoxGeometry(radio * arco * 0.92, alto * 0.86, 0.5), new THREE.MeshStandardMaterial({ roughness: 0.8 }), total);
+  escena.add(ladrillos);
+  const pintura = new THREE.InstancedMesh(new THREE.PlaneGeometry(radio * arco * 0.85, alto * 0.75), new THREE.MeshBasicMaterial({ toneMapped: false }), total);
+  escena.add(pintura);
+
+  const paleta = ['#c6f432', '#ff4d6d', '#ff7a1a', '#38e1ff', '#b14dff'];
+  let s = 5;
+  const rnd = () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const adoptados = new Set();
+  while (adoptados.size < 200) adoptados.add(Math.floor(rnd() * total));
+  const escala = new Float32Array(total);
+  const dummy = new THREE.Object3D();
+  function dibujar(id) {
+    const f = Math.floor(id / columnas), c = id % columnas;
+    const a = c * arco + (f % 2 ? arco / 2 : 0);
+    const y = (f - filas / 2) * alto;
+    dummy.position.set(Math.sin(a) * radio, y, -Math.cos(a) * radio);
+    dummy.lookAt(0, y, 0);
+    dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    ladrillos.setMatrixAt(id, dummy.matrix);
+    dummy.position.set(Math.sin(a) * (radio - 0.26), y, -Math.cos(a) * (radio - 0.26));
+    const k = escala[id] || 0.0001;
+    dummy.scale.set(k, k, 1);
+    dummy.updateMatrix();
+    pintura.setMatrixAt(id, dummy.matrix);
+  }
+  for (let id = 0; id < total; id++) {
+    ladrillos.setColorAt(id, new THREE.Color('#1d1a22'));
+    pintura.setColorAt(id, new THREE.Color(paleta[Math.floor(rnd() * paleta.length)]).multiplyScalar(1.4));
+    escala[id] = adoptados.has(id) ? 1 : 0;
+    dibujar(id);
+  }
+
+  const gotas = [];
+  const gotaGeo = new THREE.SphereGeometry(0.06, 6, 6);
+  function tirarPintura(id, punto) {
+    adoptados.add(id);
+    const color = new THREE.Color();
+    pintura.getColorAt(id, color);
+    for (let i = 0; i < 24; i++) {
+      const m = new THREE.Mesh(gotaGeo, new THREE.MeshBasicMaterial({ color, toneMapped: false }));
+      m.position.copy(punto).multiplyScalar(0.98);
+      m.userData.v = new THREE.Vector3((Math.random() - 0.5) * 0.15, Math.random() * 0.12, (Math.random() - 0.5) * 0.15);
+      m.userData.vida = 1;
+      escena.add(m);
+      gotas.push(m);
+    }
+    animando.set(id, performance.now());
+    recaudado = Math.min(1000, recaudado + 5);
+    document.getElementById('recaudado').textContent = recaudado;
+    document.getElementById('barra').style.width = `${recaudado / 10}%`;
+  }
+
+  const animando = new Map();
+  let recaudado = 642;
+  let yaw = 0, yawMeta = 0, arrastrando = false, inicioX = 0, movido = false;
+  canvas.addEventListener('pointerdown', (e) => { arrastrando = true; movido = false; inicioX = e.clientX; });
+  addEventListener('pointerup', () => (arrastrando = false));
+  addEventListener('pointermove', (e) => {
+    if (!arrastrando) return;
+    if (Math.abs(e.clientX - inicioX) > 3) movido = true;
+    yawMeta += (e.clientX - inicioX) * 0.005;
+    inicioX = e.clientX;
+  });
+  const raycaster = new THREE.Raycaster(), puntero = new THREE.Vector2();
+  canvas.addEventListener('click', (e) => {
+    if (movido) return;
+    const r = canvas.getBoundingClientRect();
+    puntero.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    raycaster.setFromCamera(puntero, camara);
+    const hit = raycaster.intersectObject(ladrillos)[0];
+    if (hit && !adoptados.has(hit.instanceId)) tirarPintura(hit.instanceId, hit.point);
+  });
+  setInterval(() => {
+    const libres = [...Array(total).keys()].filter((i) => !adoptados.has(i));
+    const id = libres[Math.floor(Math.random() * libres.length)];
+    if (id === undefined) return;
+    const f = Math.floor(id / columnas), c = id % columnas, a = c * arco;
+    tirarPintura(id, new THREE.Vector3(Math.sin(a) * radio, (f - filas / 2) * alto, -Math.cos(a) * radio));
+  }, 2200);
+
+  const compositor = new EffectComposer(renderer);
+  compositor.addPass(new RenderPass(escena, camara));
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.9, 0.5, 0.2);
+  compositor.addPass(bloom);
+
+  function redimensionar() {
+    const { clientWidth: w, clientHeight: h } = canvas;
+    renderer.setSize(w, h, false);
+    compositor.setSize(w, h);
+    camara.aspect = w / h;
+    camara.updateProjectionMatrix();
+  }
+  addEventListener('resize', redimensionar);
+  redimensionar();
+
+  renderer.setAnimationLoop((t) => {
+    if (!arrastrando) yawMeta += 0.0012;
+    yaw += (yawMeta - yaw) * 0.08;
+    camara.rotation.set(0.05, -yaw, 0, 'YXZ');
+    for (const [id, inicio] of animando) {
+      const k = Math.min(1, Math.max(0, performance.now() - inicio) / 500);
+      escala[id] = k * (1 + Math.sin(k * Math.PI) * 0.5);
+      dibujar(id);
+      if (k === 1) animando.delete(id);
+    }
+    for (let i = gotas.length - 1; i >= 0; i--) {
+      const g = gotas[i];
+      g.position.add(g.userData.v);
+      g.userData.v.y -= 0.006;
+      g.userData.vida -= 0.02;
+      g.scale.setScalar(Math.max(0.01, g.userData.vida));
+      if (g.userData.vida <= 0) { escena.remove(g); gotas.splice(i, 1); }
+    }
+    ladrillos.instanceMatrix.needsUpdate = true;
+    pintura.instanceMatrix.needsUpdate = true;
+    compositor.render();
+  });
+</script>
+</body>
+</html>

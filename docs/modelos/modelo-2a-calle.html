@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pared Viva · Modelo 2A Calle de noche</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-noche: #0a0812;
+    --color-carbon: #15121e;
+    --color-rosa: #ff3d9a;
+    --color-violeta: #8b5cf6;
+    --color-ambar: #ffb547;
+    --font-display: "Bebas Neue", sans-serif;
+    --font-sans: "Space Grotesk", system-ui, sans-serif;
+  }
+</style>
+<script type="importmap">
+  { "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  } }
+</script>
+</head>
+<body class="bg-noche font-sans text-white antialiased">
+  <canvas id="escena" class="fixed inset-0 -z-0 h-screen w-screen"></canvas>
+
+  <header class="fixed inset-x-0 top-0 z-30">
+    <div class="mx-auto mt-4 flex max-w-6xl items-center justify-between rounded-full border border-white/10 bg-black/30 px-6 py-3 backdrop-blur-xl">
+      <a href="#" class="font-display text-3xl tracking-wide">PARED <span class="text-rosa drop-shadow-[0_0_10px_#ff3d9a]">VIVA</span></a>
+      <nav class="hidden gap-6 text-sm text-white/70 md:flex">
+        <a href="#" class="text-white">Inicio</a>
+        <a href="#archivo" class="hover:text-white">Archivo</a>
+        <a href="#" class="hover:text-white">Firmantes</a>
+        <a href="#" class="hover:text-white">Mi aporte</a>
+      </nav>
+      <button class="rounded-full border border-rosa px-4 py-2 text-sm font-bold text-rosa transition hover:bg-rosa hover:text-white hover:shadow-[0_0_24px_#ff3d9a]">Conectar wallet</button>
+    </div>
+  </header>
+
+  <main class="relative z-10">
+    <section class="flex h-screen min-h-[640px] items-end">
+      <div class="mx-auto w-full max-w-6xl px-4 pb-14">
+        <p class="text-sm uppercase tracking-[0.35em] text-ambar">Medianoche en el barrio</p>
+        <h1 class="mt-2 font-display text-7xl leading-[0.9] md:text-9xl">La pared<br /><span class="text-rosa drop-shadow-[0_0_24px_#ff3d9a]">se enciende</span></h1>
+        <p class="mt-4 max-w-md text-white/70">Bajá con el scroll y recorré la calle. Cada ladrillo encendido es un vecino que dejó su recuerdo.</p>
+      </div>
+    </section>
+
+    <section class="flex min-h-screen items-center">
+      <div class="mx-auto grid w-full max-w-6xl gap-6 px-4 md:grid-cols-2">
+        <div></div>
+        <div class="rounded-3xl border border-white/10 bg-black/40 p-8 backdrop-blur-xl">
+          <span class="inline-flex items-center gap-2 rounded-full bg-rosa/15 px-3 py-1 text-xs font-bold text-rosa"><span class="h-2 w-2 animate-ping rounded-full bg-rosa"></span>Campaña activa</span>
+          <p class="mt-5 font-display text-7xl"><span id="recaudado">642</span><span class="text-3xl text-white/40"> / 1.000 USDC</span></p>
+          <div class="mt-4 h-3 overflow-hidden rounded-full bg-white/10"><div id="barra" class="h-full w-[64%] rounded-full bg-gradient-to-r from-violeta via-rosa to-ambar shadow-[0_0_20px_#ff3d9a] transition-all duration-700"></div></div>
+          <div class="mt-6 grid grid-cols-3 gap-3 text-center">
+            <div class="rounded-2xl bg-white/5 p-3"><p class="font-display text-3xl">12</p><p class="text-xs text-white/50">días</p></div>
+            <div class="rounded-2xl bg-white/5 p-3"><p class="font-display text-3xl">04</p><p class="text-xs text-white/50">horas</p></div>
+            <div class="rounded-2xl bg-white/5 p-3"><p class="font-display text-3xl">31</p><p class="text-xs text-white/50">min</p></div>
+          </div>
+          <button class="mt-6 w-full rounded-2xl bg-rosa py-4 font-bold transition hover:shadow-[0_0_40px_#ff3d9a]">Encendé tu ladrillo</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="archivo" class="flex min-h-screen items-center">
+      <div class="mx-auto w-full max-w-6xl px-4">
+        <h2 class="font-display text-6xl">Lo que cuenta la pared</h2>
+        <div class="mt-8 grid gap-5 md:grid-cols-3">
+          <article class="rounded-3xl border border-white/10 bg-black/40 p-6 backdrop-blur-xl transition hover:-translate-y-2 hover:border-rosa/60 hover:shadow-[0_0_40px_-10px_#ff3d9a]"><p class="text-xl">"Acá aprendí a andar en bici, con el mural de fondo."</p><p class="mt-6 text-sm text-white/50">Marta · Ladrillo #214</p></article>
+          <article class="rounded-3xl border border-white/10 bg-black/40 p-6 backdrop-blur-xl transition hover:-translate-y-2 hover:border-violeta/60 hover:shadow-[0_0_40px_-10px_#8b5cf6]"><p class="text-xl">"Mi abuelo ayudó a pintarlo en 1988."</p><p class="mt-6 text-sm text-white/50">Lucas · Ladrillo #87</p></article>
+          <article class="rounded-3xl border border-white/10 bg-black/40 p-6 backdrop-blur-xl transition hover:-translate-y-2 hover:border-ambar/60 hover:shadow-[0_0_40px_-10px_#ffb547]"><p class="text-xl">"Las murgas de carnaval siempre arrancaban acá."</p><p class="mt-6 text-sm text-white/50">Anónimo · Ladrillo #402</p></article>
+        </div>
+      </div>
+    </section>
+    <footer class="py-8 text-center text-sm text-white/40">Pared Viva · Construido en Stellar</footer>
+  </main>
+
+<script type="module">
+  import * as THREE from 'three';
+
+  const canvas = document.getElementById('escena');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  const escena = new THREE.Scene();
+  escena.background = new THREE.Color(0x0a0812);
+  escena.fog = new THREE.FogExp2(0x0a0812, 0.035);
+  const camara = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+
+  const piso = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x15121e, roughness: 0.25, metalness: 0.6 }));
+  piso.rotation.x = -Math.PI / 2;
+  piso.position.y = -6;
+  piso.receiveShadow = true;
+  escena.add(piso);
+
+  const vereda = new THREE.Mesh(new THREE.BoxGeometry(46, 0.4, 6), new THREE.MeshStandardMaterial({ color: 0x24202e, roughness: 0.9 }));
+  vereda.position.set(0, -5.8, 3);
+  vereda.receiveShadow = true;
+  escena.add(vereda);
+
+  escena.add(new THREE.HemisphereLight(0x8b5cf6, 0x0a0812, 0.4));
+  const farol = new THREE.SpotLight(0xffb547, 600, 50, Math.PI / 5, 0.5, 1.5);
+  farol.position.set(-12, 10, 8);
+  farol.target.position.set(-4, -2, 0);
+  farol.castShadow = true;
+  escena.add(farol, farol.target);
+  const poste = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+  poste.position.set(-12, 2, 8);
+  const lampara = new THREE.Mesh(new THREE.SphereGeometry(0.5), new THREE.MeshBasicMaterial({ color: 0xffd38a }));
+  lampara.position.set(-12, 10, 8);
+  escena.add(poste, lampara);
+  const neonRosa = new THREE.PointLight(0xff3d9a, 250, 40);
+  neonRosa.position.set(12, 4, 6);
+  escena.add(neonRosa);
+
+  const filas = 20, columnas = 30, ancho = 1.4, alto = 0.6;
+  const geo = new THREE.BoxGeometry(ancho * 0.95, alto * 0.88, 0.6);
+  const mat = new THREE.MeshStandardMaterial({ roughness: 0.7 });
+  const ladrillos = new THREE.InstancedMesh(geo, mat, filas * columnas);
+  ladrillos.castShadow = true;
+  ladrillos.receiveShadow = true;
+  escena.add(ladrillos);
+  const brillo = new THREE.InstancedMesh(new THREE.PlaneGeometry(ancho * 0.9, alto * 0.8), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.9 }), filas * columnas);
+  escena.add(brillo);
+
+  const paleta = ['#ff3d9a', '#8b5cf6', '#ffb547', '#38e1ff', '#c6f432'];
+  let s = 7;
+  const rnd = () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const adoptados = new Set();
+  while (adoptados.size < 121) adoptados.add(Math.floor(rnd() * filas * columnas));
+  const dummy = new THREE.Object3D();
+  const apagado = new THREE.Color('#2b2633');
+  const pos = (id) => {
+    const f = Math.floor(id / columnas), c = id % columnas;
+    return [(c - columnas / 2) * ancho + (f % 2 ? ancho / 2 : 0), f * alto - 5.5];
+  };
+  const escala = new Float32Array(filas * columnas);
+  function dibujar(id) {
+    const [x, y] = pos(id);
+    dummy.position.set(x, y, 0);
+    dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    ladrillos.setMatrixAt(id, dummy.matrix);
+    dummy.position.z = 0.31;
+    const k = escala[id];
+    dummy.scale.set(k, k, k);
+    dummy.updateMatrix();
+    brillo.setMatrixAt(id, dummy.matrix);
+  }
+  for (let id = 0; id < filas * columnas; id++) {
+    const c = new THREE.Color(paleta[Math.floor(rnd() * paleta.length)]);
+    ladrillos.setColorAt(id, apagado);
+    brillo.setColorAt(id, c);
+    escala[id] = adoptados.has(id) ? 1 : 0;
+    dibujar(id);
+  }
+
+  const chispas = new THREE.BufferGeometry();
+  const n = 400, p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { p[i * 3] = (Math.random() - 0.5) * 60; p[i * 3 + 1] = Math.random() * 20 - 6; p[i * 3 + 2] = Math.random() * 20; }
+  chispas.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  const polvo = new THREE.Points(chispas, new THREE.PointsMaterial({ color: 0xffb547, size: 0.06, transparent: true, opacity: 0.7 }));
+  escena.add(polvo);
+
+  const animando = new Map();
+  let recaudado = 642;
+  setInterval(() => {
+    const libres = [...Array(filas * columnas).keys()].filter((i) => !adoptados.has(i));
+    const id = libres[Math.floor(Math.random() * libres.length)];
+    if (id === undefined) return;
+    adoptados.add(id);
+    animando.set(id, performance.now());
+    recaudado = Math.min(1000, recaudado + 5);
+    document.getElementById('recaudado').textContent = recaudado;
+    document.getElementById('barra').style.width = `${recaudado / 10}%`;
+  }, 2500);
+
+  const recorrido = [
+    { p: new THREE.Vector3(0, 0, 26), m: new THREE.Vector3(0, 0, 0) },
+    { p: new THREE.Vector3(-18, -3, 12), m: new THREE.Vector3(-4, -1, 0) },
+    { p: new THREE.Vector3(14, 6, 14), m: new THREE.Vector3(4, -1, 0) },
+  ];
+  const mira = new THREE.Vector3();
+  const objetivo = new THREE.Vector3();
+  const destino = new THREE.Vector3();
+  let mouseX = 0, mouseY = 0;
+  addEventListener('pointermove', (e) => { mouseX = e.clientX / innerWidth - 0.5; mouseY = e.clientY / innerHeight - 0.5; });
+
+  function redimensionar() {
+    renderer.setSize(innerWidth, innerHeight, false);
+    camara.aspect = innerWidth / innerHeight;
+    camara.updateProjectionMatrix();
+  }
+  addEventListener('resize', redimensionar);
+  redimensionar();
+  camara.position.copy(recorrido[0].p);
+
+  renderer.setAnimationLoop((t) => {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const avance = max > 0 ? (scrollY / max) * (recorrido.length - 1) : 0;
+    const i = Math.min(recorrido.length - 2, Math.floor(avance));
+    const k = avance - i;
+    destino.lerpVectors(recorrido[i].p, recorrido[i + 1].p, k).add(new THREE.Vector3(mouseX * 3, -mouseY * 2, 0));
+    objetivo.lerpVectors(recorrido[i].m, recorrido[i + 1].m, k);
+    camara.position.lerp(destino, 0.06);
+    mira.lerp(objetivo, 0.06);
+    camara.lookAt(mira);
+    for (const [id, inicio] of animando) {
+      const a = Math.min(1, Math.max(0, performance.now() - inicio) / 700);
+      escala[id] = a < 1 ? a * (1 + Math.sin(a * Math.PI) * 0.6) : 1;
+      dibujar(id);
+      if (a === 1) animando.delete(id);
+    }
+    ladrillos.instanceMatrix.needsUpdate = true;
+    brillo.instanceMatrix.needsUpdate = true;
+    lampara.material.color.setHSL(0.1, 1, 0.7 + Math.sin(t / 90) * 0.03 * (Math.random() > 0.97 ? 8 : 1));
+    polvo.rotation.y = t / 40000;
+    neonRosa.intensity = 220 + Math.sin(t / 300) * 40;
+    renderer.render(escena, camara);
+  });
+</script>
+</body>
+</html>

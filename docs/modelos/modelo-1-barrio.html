@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pared Viva · Modelo 1 Barrio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+  @theme {
+    --color-crema: #f5f0e6;
+    --color-arena: #e9dfcc;
+    --color-ladrillo: #c4512b;
+    --color-ladrillo-oscuro: #9c3d1f;
+    --color-petroleo: #2f5d62;
+    --color-tinta: #1f1b16;
+    --color-libre: #d9d4ca;
+    --font-titulo: "Fraunces", serif;
+    --font-sans: "Inter", system-ui, sans-serif;
+  }
+  .mural-arte {
+    background:
+      radial-gradient(circle at 20% 30%, #f2c14e 0 12%, transparent 13%),
+      radial-gradient(circle at 75% 25%, #e76f51 0 16%, transparent 17%),
+      radial-gradient(circle at 55% 70%, #2a9d8f 0 20%, transparent 21%),
+      radial-gradient(circle at 15% 80%, #8e5ea2 0 14%, transparent 15%),
+      radial-gradient(circle at 90% 85%, #f4a261 0 12%, transparent 13%),
+      linear-gradient(135deg, #264653, #2a9d8f 40%, #e9c46a 70%, #e76f51);
+  }
+</style>
+</head>
+<body class="bg-crema text-tinta font-sans antialiased">
+  <header class="sticky top-0 z-20 border-b border-arena bg-crema/90 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+      <a href="#" class="flex items-center gap-2">
+        <span class="grid grid-cols-2 gap-0.5">
+          <span class="h-2.5 w-4 rounded-sm bg-ladrillo"></span><span class="h-2.5 w-4 rounded-sm bg-petroleo"></span>
+          <span class="h-2.5 w-4 rounded-sm bg-libre"></span><span class="h-2.5 w-4 rounded-sm bg-ladrillo"></span>
+        </span>
+        <span class="font-titulo text-xl font-extrabold text-ladrillo">Pared Viva</span>
+      </a>
+      <nav class="hidden gap-6 text-sm font-medium md:flex">
+        <a href="#" class="text-ladrillo">Inicio</a>
+        <a href="#archivo" class="hover:text-ladrillo">Archivo</a>
+        <a href="#" class="hover:text-ladrillo">Firmantes</a>
+        <a href="#" class="hover:text-ladrillo">Mi aporte</a>
+      </nav>
+      <button class="rounded-full border-2 border-petroleo px-4 py-1.5 text-sm font-semibold text-petroleo transition hover:bg-petroleo hover:text-white">Conectar wallet</button>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4">
+    <section class="grid items-center gap-10 py-12 md:grid-cols-2 md:py-20">
+      <div>
+        <span class="inline-block rounded-full bg-arena px-3 py-1 text-xs font-semibold uppercase tracking-wider text-ladrillo-oscuro">Mural de la Sexta Sección · Mendoza</span>
+        <h1 class="mt-4 font-titulo text-4xl leading-tight font-extrabold md:text-6xl">Cada ladrillo guarda un recuerdo del barrio.</h1>
+        <p class="mt-5 max-w-md text-lg text-tinta/70">Adoptá un ladrillo, dejá tu historia y ayudá a restaurar el mural. Los fondos se liberan por hitos y, si no llegamos a la meta, recuperás tu aporte.</p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a href="#mural" class="rounded-lg bg-ladrillo px-6 py-3 font-semibold text-white shadow-lg shadow-ladrillo/30 transition hover:bg-ladrillo-oscuro">Adoptá un ladrillo</a>
+          <a href="#archivo" class="rounded-lg border border-tinta/20 px-6 py-3 font-semibold transition hover:border-tinta">Ver recuerdos</a>
+        </div>
+      </div>
+      <div class="[perspective:1000px]"><div data-tilt class="rounded-2xl bg-white p-6 shadow-xl shadow-tinta/5 ring-1 ring-arena transition-transform duration-200 ease-out [transform-style:preserve-3d]">
+        <div class="flex items-center justify-between">
+          <span class="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800"><span class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></span>Activa</span>
+          <span class="text-sm text-tinta/60">Termina en <strong class="text-tinta">12d 4h 31m</strong></span>
+        </div>
+        <p class="mt-6 font-titulo text-4xl font-extrabold">642,00 <span class="text-lg font-semibold text-tinta/50">USDC</span></p>
+        <p class="text-sm text-tinta/60">recaudados de 1.000,00 USDC</p>
+        <div class="mt-4 h-3 overflow-hidden rounded-full bg-libre"><div class="h-full w-[64%] rounded-full bg-gradient-to-r from-ladrillo to-amber-500"></div></div>
+        <dl class="mt-6 grid grid-cols-3 gap-4 text-center">
+          <div class="rounded-xl bg-crema p-3"><dt class="text-xs text-tinta/60">Ladrillos</dt><dd class="font-titulo text-2xl font-bold">121</dd></div>
+          <div class="rounded-xl bg-crema p-3"><dt class="text-xs text-tinta/60">Guardianes</dt><dd class="font-titulo text-2xl font-bold">98</dd></div>
+          <div class="rounded-xl bg-crema p-3"><dt class="text-xs text-tinta/60">Hito</dt><dd class="font-titulo text-2xl font-bold">0/3</dd></div>
+        </dl>
+      </div></div>
+    </section>
+
+    <section id="mural" class="py-8">
+      <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 class="font-titulo text-3xl font-extrabold">El mural en vivo</h2>
+          <p class="text-tinta/60">Tocá un ladrillo gris para adoptarlo. Los de color ya tienen dueño.</p>
+        </div>
+        <div class="flex gap-4 text-sm">
+          <span class="flex items-center gap-2"><span class="h-3 w-5 rounded-sm bg-libre"></span>Libre</span>
+          <span class="flex items-center gap-2"><span class="mural-arte h-3 w-5 rounded-sm"></span>Adoptado</span>
+        </div>
+      </div>
+      <div class="[perspective:1400px]"><div data-tilt data-suave class="relative rounded-2xl bg-tinta p-1.5 shadow-2xl transition-transform duration-300 ease-out [transform-style:preserve-3d]">
+        <div id="grilla" class="mural-arte grid" style="grid-template-columns: repeat(30, 1fr)"></div>
+        <div id="tooltip" class="pointer-events-none absolute z-10 hidden rounded-lg bg-tinta px-3 py-2 text-xs text-white shadow-lg [transform:translateZ(40px)]"></div>
+      </div></div>
+    </section>
+
+    <section class="py-16">
+      <h2 class="text-center font-titulo text-3xl font-extrabold">Cómo funciona</h2>
+      <div class="mt-10 grid gap-6 md:grid-cols-3">
+        <article class="rounded-2xl bg-white p-6 ring-1 ring-arena">
+          <span class="grid h-12 w-12 place-items-center rounded-xl bg-ladrillo font-titulo text-xl font-bold text-white">1</span>
+          <h3 class="mt-4 text-lg font-semibold">Elegís un ladrillo</h3>
+          <p class="mt-2 text-tinta/70">Cada ladrillo libre del mural se puede adoptar desde 1 USDC.</p>
+        </article>
+        <article class="rounded-2xl bg-white p-6 ring-1 ring-arena">
+          <span class="grid h-12 w-12 place-items-center rounded-xl bg-petroleo font-titulo text-xl font-bold text-white">2</span>
+          <h3 class="mt-4 text-lg font-semibold">Dejás un recuerdo</h3>
+          <p class="mt-2 text-tinta/70">Una foto o un texto del barrio que queda guardado para siempre.</p>
+        </article>
+        <article class="rounded-2xl bg-white p-6 ring-1 ring-arena">
+          <span class="grid h-12 w-12 place-items-center rounded-xl bg-amber-500 font-titulo text-xl font-bold text-white">3</span>
+          <h3 class="mt-4 text-lg font-semibold">El barrio decide</h3>
+          <p class="mt-2 text-tinta/70">2 de 3 firmantes liberan cada hito. Si no se llega a la meta, se devuelve todo.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="archivo" class="py-8">
+      <div class="flex items-end justify-between">
+        <h2 class="font-titulo text-3xl font-extrabold">Últimos recuerdos</h2>
+        <a href="#" class="text-sm font-semibold text-petroleo hover:underline">Ver todo el archivo →</a>
+      </div>
+      <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <article class="overflow-hidden rounded-2xl bg-white ring-1 ring-arena transition hover:-translate-y-1 hover:shadow-xl">
+          <div class="h-40 bg-gradient-to-br from-amber-300 to-ladrillo"></div>
+          <div class="p-5">
+            <p class="font-titulo text-lg">"Acá aprendí a andar en bici, con el mural de fondo."</p>
+            <p class="mt-3 text-sm text-tinta/60">Marta · Ladrillo #214 · hace 2 h</p>
+          </div>
+        </article>
+        <article class="overflow-hidden rounded-2xl bg-white ring-1 ring-arena transition hover:-translate-y-1 hover:shadow-xl">
+          <div class="h-40 bg-gradient-to-br from-teal-300 to-petroleo"></div>
+          <div class="p-5">
+            <p class="font-titulo text-lg">"Mi abuelo ayudó a pintarlo en 1988."</p>
+            <p class="mt-3 text-sm text-tinta/60">Lucas · Ladrillo #87 · hace 5 h</p>
+          </div>
+        </article>
+        <article class="overflow-hidden rounded-2xl bg-white ring-1 ring-arena transition hover:-translate-y-1 hover:shadow-xl">
+          <div class="h-40 bg-gradient-to-br from-fuchsia-300 to-purple-700"></div>
+          <div class="p-5">
+            <p class="font-titulo text-lg">"Las murgas de carnaval siempre arrancaban acá."</p>
+            <p class="mt-3 text-sm text-tinta/60">Anónimo · Ladrillo #402 · ayer</p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="mt-16 border-t border-arena py-8 text-center text-sm text-tinta/60">Pared Viva · Construido en Stellar</footer>
+
+<script>
+  const grilla = document.getElementById('grilla');
+  const tooltip = document.getElementById('tooltip');
+  const filas = 20, columnas = 30;
+  const nombres = ['Marta', 'Lucas', 'Anónimo', 'Rosa', 'Javi', 'Sofi', 'Don Pedro'];
+  let s = 42;
+  const rnd = () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const adoptados = new Set();
+  while (adoptados.size < 121) adoptados.add(Math.floor(rnd() * filas * columnas));
+  for (let id = 0; id < filas * columnas; id++) {
+    const b = document.createElement('button');
+    b.className = 'aspect-[2/1] border border-tinta/80 transition duration-500 hover:z-10 hover:scale-150 hover:ring-2 hover:ring-white';
+    const libre = !adoptados.has(id);
+    if (libre) b.classList.add('bg-libre');
+    b.addEventListener('mouseenter', () => {
+      tooltip.textContent = libre ? `Adoptá el ladrillo #${id}` : `#${id} · ${nombres[id % nombres.length]} · 26/11`;
+      tooltip.classList.remove('hidden');
+      const r = b.getBoundingClientRect(), p = grilla.getBoundingClientRect();
+      tooltip.style.left = `${r.left - p.left}px`;
+      tooltip.style.top = `${r.top - p.top - 36}px`;
+    });
+    b.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
+    grilla.append(b);
+  }
+  document.querySelectorAll('[data-tilt]').forEach((el) => {
+    const max = el.hasAttribute('data-suave') ? 6 : 12;
+    el.addEventListener('mousemove', (e) => {
+      const r = el.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - 0.5;
+      const y = (e.clientY - r.top) / r.height - 0.5;
+      el.style.transform = `rotateX(${-y * max}deg) rotateY(${x * max}deg)`;
+    });
+    el.addEventListener('mouseleave', () => (el.style.transform = ''));
+  });
+  setInterval(() => {
+    const libres = [...grilla.children].filter((c) => c.classList.contains('bg-libre'));
+    const c = libres[Math.floor(Math.random() * libres.length)];
+    if (!c) return;
+    c.classList.remove('bg-libre');
+    c.classList.add('animate-pulse');
+    setTimeout(() => c.classList.remove('animate-pulse'), 2000);
+  }, 4000);
+</script>
+</body>
+</html>

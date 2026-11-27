@@ -34,7 +34,9 @@ fi
 
 ADMIN=$(stellar keys address admin)
 ES_IDENTIDAD=0
-if DESTINO_ID=$(stellar keys address "$DESTINO" 2>/dev/null); then
+if [[ $DESTINO =~ ^G[A-Z2-7]{55}$ ]]; then
+  DESTINO_ID=$DESTINO
+elif DESTINO_ID=$(stellar keys address "$DESTINO" 2>/dev/null); then
   ES_IDENTIDAD=1
 else
   DESTINO_ID=$DESTINO
@@ -68,7 +70,7 @@ if (( ESTADO != 0 )); then
 
 No se pudo mintear en la dirección externa $DESTINO_ID.
 Si el error es por falta de trustline (por ejemplo op_no_trust), agregala desde Freighter:
-  1. Abrí Freighter en Testnet → Manage assets → Add asset.
+  1. Abrí Freighter en Testnet → + Add token (en versiones viejas: Manage assets → Add asset).
   2. Asset code: USDC
   3. Issuer: $ADMIN
   4. Volvé a correr: ./scripts/fondear.sh $DESTINO $MONTO_USDC

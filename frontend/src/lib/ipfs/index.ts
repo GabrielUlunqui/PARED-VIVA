@@ -59,13 +59,53 @@ function recuerdoEjemplo(cid: string): Recuerdo {
   return { version: 1, ...ejemplo, creado: new Date().toISOString() };
 }
 
+const MAX_RECUERDO_BYTES = 64 * 1024;
+const FORMATO_CID = /^[a-zA-Z0-9]{20,120}$/;
+
+async function textoLimitado(res: Response, max: number): Promise<string> {
+  const declarado = Number(res.headers.get('content-length') ?? 0);
+  if (declarado > max) throw new Error('El recuerdo es demasiado grande');
+  if (!res.body) return res.text();
+  const lector = res.body.getReader();
+  const partes: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await lector.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) {
+      await lector.cancel();
+      throw new Error('El recuerdo es demasiado grande');
+    }
+    partes.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let pos = 0;
+  for (const parte of partes) {
+    bytes.set(parte, pos);
+    pos += parte.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+function sanearRecuerdo(crudo: unknown, cid: string): Recuerdo {
+  const r = crudo as Recuerdo;
+  if (typeof r?.texto !== 'string' || !r.texto.trim()) throw new Error(`El recuerdo ${cid} no tiene un formato válido`);
+  return {
+    version: 1,
+    texto: r.texto.slice(0, MAX_TEXTO),
+    ...(typeof r.alias === 'string' && r.alias.trim() ? { alias: r.alias.slice(0, MAX_ALIAS) } : {}),
+    ...(typeof r.imagenCid === 'string' && FORMATO_CID.test(r.imagenCid) ? { imagenCid: r.imagenCid } : {}),
+    creado: typeof r.creado === 'string' ? r.creado : new Date().toISOString(),
+  };
+}
+
 export async function leerRecuerdo(cid: string): Promise<Recuerdo> {
   if (cid.startsWith('mock-')) return recuerdoEjemplo(cid);
-  const res = await fetch(urlGateway(cid));
+  const res = await fetch(urlGateway(cid), { signal: AbortSignal.timeout(8000) });
   if (!res.ok) throw new Error(`No se pudo leer el recuerdo ${cid}`);
-  const recuerdo = (await res.json()) as Recuerdo;
-  if (typeof recuerdo?.texto !== 'string') throw new Error(`El recuerdo ${cid} no tiene un formato válido`);
-  return recuerdo;
+  const recuerdo = JSON.parse(await textoLimitado(res, MAX_RECUERDO_BYTES)) as unknown;
+  return sanearRecuerdo(recuerdo, cid);
 }
 
 export function urlGateway(cid: string): string {

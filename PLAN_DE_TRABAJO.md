@@ -322,13 +322,13 @@ Duración estimada: una sesión corta. Al terminar, cada uno puede irse a trabaj
 - [x] `src/components/wallet/ConectarWallet.astro`: botón "Conectar" / dirección abreviada `GABC…XYZ`; emite `pv:wallet-cambiada`.
 
 ### B3. Lecturas reales (requiere A1)
-- [ ] `src/lib/stellar/cliente.ts`: instancia el cliente de los bindings con `RED` y `CONTRATOS` de `config.ts`.
-- [ ] `src/lib/datos/stellar.ts`: implementa `obtenerCampania`, `obtenerLadrillos`, `obtenerLadrillo` convirtiendo los tipos del binding a `tipos.ts`.
-- [ ] Cambiar `datos` a `fuenteStellar` (mantener una variable para volver al mock: `PUBLIC_USAR_MOCK=true`).
+- [x] `src/lib/stellar/cliente.ts`: instancia el cliente de los bindings con `RED` y `CONTRATOS` de `config.ts`.
+- [x] `src/lib/datos/stellar.ts`: implementa `obtenerCampania`, `obtenerLadrillos`, `obtenerLadrillo` convirtiendo los tipos del binding a `tipos.ts`.
+- [x] Cambiar `datos` a `fuenteStellar` (mantener una variable para volver al mock: `PUBLIC_USAR_MOCK=true`).
 
 ### B4. Tiempo real
-- [ ] `src/lib/stellar/eventos-red.ts`: polling a `rpc.getEvents` cada 4 s filtrando el contrato y el topic `donacion`, guardando el último ledger visto.
-- [ ] Implementar `suscribirDonaciones` real con eso.
+- [x] `src/lib/stellar/eventos-red.ts`: polling a `rpc.getEvents` cada 4 s filtrando el contrato y el topic `donacion`, guardando el último ledger visto.
+- [x] Implementar `suscribirDonaciones` real con eso.
 - [ ] Probar con dos navegadores: donar en uno, ver el ladrillo aparecer en el otro.
 
 ### B5. Flujo de donación (requiere A2; usa `subirRecuerdo` de C o un stub) — ✅ con mock
@@ -338,13 +338,13 @@ Duración estimada: una sesión corta. Al terminar, cada uno puede irse a trabaj
 - [x] Mientras C no termine IPFS: usa el stub de `src/lib/ipfs`.
 - [x] `src/lib/stellar/errores.ts`: errores del contrato (1–9, 20), token (10 saldo, 13 trustline), firma rechazada, red equivocada, cuenta sin fondos.
 - [x] Al confirmar, emitir `pv:donacion-confirmada`.
-- [ ] Probar contra el contrato real cuando A complete A3 (`PUBLIC_USAR_MOCK=false`).
+- [x] Probar contra el contrato real cuando A complete A3 (`PUBLIC_USAR_MOCK=false`).
 
 ### B6. Panel de firmantes (requiere A4) — ✅ con mock
 - [x] `src/pages/firmantes.astro`: lista de hitos con monto, estado (pendiente / 1 de 2 / pagado) y quién aprobó.
 - [x] Botón "Aprobar" visible solo si la wallet conectada es firmante y no aprobó.
 - [x] Link a la transacción de aprobación (la 2.ª aprobación es la que paga al restaurador).
-- [ ] Requiere en el contrato las lecturas `firmantes()` y `aprobaciones(hito)` (agregadas a la interfaz; A las implementa en A1/A4).
+- [x] Requiere en el contrato las lecturas `firmantes()` y `aprobaciones(hito)` (agregadas a la interfaz; A las implementa en A1/A4).
 - [ ] Probar contra el contrato real cuando A complete A4.
 
 ### B7. Mi aporte y reembolso (requiere A5) — ✅ con mock
@@ -380,44 +380,44 @@ Duración estimada: una sesión corta. Al terminar, cada uno puede irse a trabaj
 - [ ] Cuenta en Pinata, crear JWT, guardarlo en `frontend/.env` (**nunca** en git).
 
 ### C1. Identidad visual y base
-- [ ] Paleta, tipografías, logo simple de "Pared Viva".
-- [ ] `src/styles/global.css` con variables CSS (colores, espaciados, radios).
-- [ ] `src/layouts/Base.astro`: head, nav (Inicio, Archivo, Firmantes, Mi aporte), slot para `ConectarWallet` de B, footer.
-- [ ] `src/components/ui/`: `Boton`, `Modal` (abrir/cerrar por JS, accesible con Escape), `Tarjeta`, `BarraProgreso`, `CuentaRegresiva`.
+- [x] Paleta, tipografías, logo simple de "Pared Viva".
+- [x] `src/styles/global.css` con variables CSS (colores, espaciados, radios).
+- [x] `src/layouts/Base.astro`: head, nav (Inicio, Archivo, Firmantes, Mi aporte), slot para `ConectarWallet` de B, footer.
+- [x] `src/components/ui/`: `Boton`, `Modal` (abrir/cerrar por JS, accesible con Escape), `Tarjeta`, `BarraProgreso`, `CuentaRegresiva`.
 
 ### C2. Mural ⭐ (con datos mock de B1)
-- [ ] `src/components/mural/MuralGrid.astro`: la foto del mural dividida en `filas × columnas`.
-- [ ] Ladrillo libre: gris o desaturado. Ladrillo adoptado: a color.
-- [ ] Hover: tooltip con alias y fecha si está adoptado, o "Adoptá este ladrillo" si está libre.
-- [ ] Click en libre → emitir `pv:ladrillo-seleccionado`. Click en adoptado → ir a `/ladrillo/[id]`.
-- [ ] Escuchar `datos.suscribirDonaciones` y `pv:donacion-confirmada`: animar el ladrillo (de gris a color con brillo).
-- [ ] Responsive: que funcione en celular (la demo arranca escaneando un QR).
+- [x] `src/components/mural/MuralGrid.astro`: la foto del mural dividida en `filas × columnas`.
+- [x] Ladrillo libre: gris o desaturado. Ladrillo adoptado: a color.
+- [x] Hover: tooltip con alias y fecha si está adoptado, o "Adoptá este ladrillo" si está libre.
+- [x] Click en libre → emitir `pv:ladrillo-seleccionado`. Click en adoptado → ir a `/ladrillo/[id]`.
+- [x] Escuchar `datos.suscribirDonaciones` y `pv:donacion-confirmada`: animar el ladrillo (de gris a color con brillo).
+- [x] Responsive: que funcione en celular (la demo arranca escaneando un QR).
 
 ### C3. Home
-- [ ] `src/pages/index.astro`: hero con la frase del pitch, `MuralGrid`, `Progreso` (recaudado/meta + cuenta regresiva + estado), "Cómo funciona" en 3 pasos, e incluir `<DonarModal />` de B.
-- [ ] `src/components/mural/Progreso.astro`: se actualiza con `pv:donacion-confirmada`.
+- [x] `src/pages/index.astro`: hero con la frase del pitch, `MuralGrid`, `Progreso` (recaudado/meta + cuenta regresiva + estado), "Cómo funciona" en 3 pasos, e incluir `<DonarModal />` de B.
+- [x] `src/components/mural/Progreso.astro`: se actualiza con `pv:donacion-confirmada`.
 
 ### C4. IPFS
 - [x] Adapter `@astrojs/node` instalado; `/api/subir`, `/archivo` y `/ladrillo/[id]` usan `prerender = false`.
-- [ ] `src/pages/api/subir.ts` (hoy devuelve 501): recibe `multipart/form-data`, valida tamaño y tipo, sube imagen y JSON `Recuerdo` a Pinata con `PINATA_JWT`, devuelve `{ cid }`.
-- [ ] `src/lib/ipfs/index.ts`: `subirRecuerdo`, `leerRecuerdo`, `urlGateway` (sección 4.5).
-- [ ] `.env.example` con `PINATA_JWT=`.
-- [ ] Avisar a B cuando esté para reemplazar el stub.
+- [x] `src/pages/api/subir.ts`: recibe `multipart/form-data`, valida tamaño y tipo, sube imagen y JSON `Recuerdo` a Pinata con `PINATA_JWT`, devuelve `{ cid }`.
+- [x] `src/lib/ipfs/index.ts`: `subirRecuerdo`, `leerRecuerdo`, `urlGateway` (sección 4.5).
+- [x] `.env.example` con `PINATA_JWT=`.
+- [x] Avisar a B cuando esté para reemplazar el stub.
 
 ### C5. Memoria
-- [ ] `src/pages/ladrillo/[id].astro`: posición en el mural, recuerdo (texto, imagen, alias), fecha, dirección del donante, CID con link al gateway, aclaración de que el contenido está anclado on-chain.
-- [ ] `src/pages/archivo.astro`: galería de todos los recuerdos, de más nuevo a más viejo.
-- [ ] Estados vacíos y de carga cuidados.
+- [x] `src/pages/ladrillo/[id].astro`: posición en el mural, recuerdo (texto, imagen, alias), fecha, dirección del donante, CID con link al gateway, aclaración de que el contenido está anclado on-chain.
+- [x] `src/pages/archivo.astro`: galería de todos los recuerdos, de más nuevo a más viejo.
+- [x] Estados vacíos y de carga cuidados.
 
 ### C6. QR y material físico
-- [ ] Agregar `qrcode` a `package.json` (C es dueño de las dependencias).
-- [ ] Generar QR al `/` (para el cartel) y QR por ladrillo (para la demo).
+- [x] Agregar `qrcode` a `package.json` (C es dueño de las dependencias).
+- [x] Generar QR al `/` (para el cartel) y QR por ladrillo (para la demo).
 - [ ] `docs/cartel.pdf`: cartel imprimible para "la pared" de la demo.
 
 ### C7. Pitch y demo
-- [ ] `docs/pitch.md`: textos del formulario de inscripción (nombre, descripción corta, etiquetas: Soroban, Stellar SDK, Freighter, Rust, TypeScript).
+- [x] `docs/pitch.md`: textos del formulario de inscripción (nombre, descripción corta, etiquetas: Soroban, Stellar SDK, Freighter, Rust, TypeScript).
 - [ ] Slides: problema → solución → demo → por qué Stellar → diferencial → equipo.
-- [ ] Guion de demo (README §14) con tiempos y quién habla.
+- [x] Guion de demo (README §14) con tiempos y quién habla.
 - [ ] **Video de respaldo** grabado sobre el despliegue de demo (por si falla internet).
 - [ ] Capturas para el repo y el formulario.
 

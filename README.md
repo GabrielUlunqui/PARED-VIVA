@@ -18,6 +18,8 @@ Pared Viva está desplegado en **Stellar Testnet**. No uses fondos reales.
 - [USDC de prueba (SAC)](https://stellar.expert/explorer/testnet/contract/CAKOGDRIVNTTJMVT5YEI5R5EY5FOBGPJSO4QOEFNHIZZBHYH7XQNSKDP): `CAKOGDRIVNTTJMVT5YEI5R5EY5FOBGPJSO4QOEFNHIZZBHYH7XQNSKDP`
 - [`fondo-barrio`](https://stellar.expert/explorer/testnet/contract/CB36KQWDL6BD6TJVVOMRVKSHVM5QK7VTOLLU6ZG3EH3ZK43LID42NNIA): `CB36KQWDL6BD6TJVVOMRVKSHVM5QK7VTOLLU6ZG3EH3ZK43LID42NNIA`
 
+La campaña de demostración está sembrada **cerca de la meta** para poder mostrar la liberación por hitos. El estado exacto cambia con cada donación y se lee directamente del contrato.
+
 ### Correr el frontend contra testnet
 
 ```sh
@@ -58,6 +60,8 @@ Si la dirección es externa (por ejemplo Freighter), primero agregá la trustlin
 - [Modelo de negocio](docs/modelo-de-negocio.md)
 - [Marco legal](docs/legal.md) y [borradores de documentos legales](docs/legal/)
 - [Plan de trabajo](PLAN_DE_TRABAJO.md)
+- [Runbook de la demo](docs/runbook-demo.md)
+- [Borrador de entrega en Apex](docs/entrega-apex.md)
 - [Seguridad](SECURITY.md)
 - [Contribución](CONTRIBUTING.md)
 
@@ -356,12 +360,11 @@ Cada contrato tiene `src/test.rs` con tests del entorno de host (`cargo test`). 
 **Variables de entorno** (`frontend/.env`, nunca se commitea):
 
 ```env
-PUBLIC_STELLAR_RPC_URL=https://soroban-testnet.stellar.org
-PUBLIC_STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
-PUBLIC_CONTRATO_PARED_VIVA=C...
-PUBLIC_CONTRATO_USDC=C...
+PUBLIC_USAR_MOCK=false    # false = leer el contrato real de testnet
 PINATA_JWT=...            # solo servidor, sin prefijo PUBLIC_
 ```
+
+La red RPC, el network passphrase y los IDs de los contratos no se leen desde `.env`: están versionados en `frontend/src/contracts/config.ts`. Si se redespliega, `soroban/scripts/desplegar.sh` actualiza ese archivo y hay que revisar/commitear el cambio.
 
 > El endpoint `/api/subir` y las páginas `/archivo` y `/ladrillo/[id]` corren en servidor (`prerender = false`) con el adapter `@astrojs/node`, ya instalado.
 
@@ -371,7 +374,7 @@ PINATA_JWT=...            # solo servidor, sin prefijo PUBLIC_
 1. El vecino entra a la web (o escanea el QR del cartel en la pared).
 2. Toca un ladrillo gris en el mural.
 3. Escribe un recuerdo y opcionalmente sube una foto → se sube a IPFS → CID.
-4. Conecta Freighter y firma `donar(ladrillo, cid)`.
+4. Conecta Freighter y firma `donar(donante, ladrillo, cid, monto)`.
 5. El ladrillo se pinta a color para todos los que están mirando.
 
 **Liberar un hito**
@@ -507,8 +510,8 @@ stellar contract asset deploy --asset USDC:$(stellar keys address admin) \
 
 # 4. Probar
 stellar contract invoke --id pared-viva --network testnet --source-account vecino \
-  -- donar --donante vecino --ladrillo_id 0 --recuerdo_cid "bafy..."
-stellar contract invoke --id pared-viva --network testnet -- estado
+  -- donar --donante vecino --ladrillo_id 0 --recuerdo_cid "bafy..." --monto 10000000
+stellar contract invoke --id pared-viva --network testnet --send no --source-account admin -- estado
 
 # 5. Generar bindings para el frontend
 stellar contract bindings typescript --network testnet --contract-id pared-viva \
@@ -537,7 +540,7 @@ Con 2 personas: contratos + frontend, y el pitch se reparte. Con 4: se suma algu
 - **Rama `main` siempre funcionando.** Cada tarea en su rama (`feat/donar`, `feat/mural-grid`, `fix/...`) y se integra con pull request revisado por otra persona.
 - **El contrato manda.** La interfaz (nombres de funciones, parámetros, eventos) de la sección 6 se acuerda **primero**; el frontend trabaja contra esa interfaz con datos falsos (mocks) mientras el contrato se termina.
 - **Tests antes de desplegar.** Ningún cambio al contrato se despliega sin `cargo test` en verde.
-- **Un solo despliegue "oficial" en testnet** cuyo ID está en `frontend/.env`; si se redespliega, se avisa y se regeneran los bindings.
+- **Un solo despliegue "oficial" en testnet** cuyos IDs están en `frontend/src/contracts/config.ts`; si se redespliega, se avisa, se regeneran los bindings y se actualiza ese archivo.
 - **Nada de secretos en el repo:** claves de Stellar en `stellar keys`, JWT de Pinata en `.env` (ignorado por git).
 - **Sincronización corta** al inicio de cada bloque de trabajo: qué hice, qué sigue, qué me bloquea.
 
@@ -551,28 +554,33 @@ Una tarea está terminada cuando: funciona en testnet, tiene tests (si es contra
 - [x] Proyecto Astro creado con SDKs de Stellar
 - [x] Rust + `wasm32v1-none` + Stellar CLI instalados
 - [x] Workspace Soroban inicializado (`soroban/`)
-- [ ] Resolver compilación en Windows (ver sección 10)
+- [x] Resolver compilación en Windows (ver sección 10)
 - [ ] Freighter instalado y en testnet en todos los navegadores del equipo
 - [ ] Cuenta en Pinata (IPFS) y JWT en `.env`
 - [ ] Elegir el mural real y conseguir una foto en alta
 
 ### Fase 1 — MVP (lo que se presenta sí o sí)
-- [ ] Contrato `pared-viva`: constructor, `donar`, `estado`, `ladrillos`
-- [ ] `aprobar_hito` con liberación automática 2 de 3
-- [ ] `reembolsar`
-- [ ] Tests de la sección 6.5
-- [ ] Despliegue en testnet + bindings
-- [ ] Frontend: mural en grilla leyendo `ladrillos()`
-- [ ] Frontend: flujo de donación con Freighter
-- [ ] Subida de recuerdo a IPFS y página `/ladrillo/[id]`
-- [ ] Panel `/firmantes`
-- [ ] Mural en vivo con eventos
+- [x] Contrato `pared-viva`: constructor, `donar`, `estado`, `ladrillos`
+- [x] `aprobar_hito` con liberación automática 2 de 3
+- [x] `reembolsar`
+- [x] Tests de la sección 6.5
+- [x] Despliegue en testnet + bindings
+- [x] Frontend: mural en grilla leyendo `ladrillos()`
+- [x] Frontend: flujo de donación con Freighter
+- [x] Subida de recuerdo a IPFS implementada y página `/ladrillo/[id]`
+- [ ] Prueba end-to-end de una donación con CID real de IPFS
+- [x] Panel `/firmantes`
+- [x] Mural en vivo con eventos implementado
+- [ ] Ensayo final del mural en vivo con dos navegadores
 
 ### Fase 2 — Diferenciales
-- [ ] `retirar_excedente` al fondo
-- [ ] Contrato `fondo-barrio`: split de láminas
+
+> Nota de estado: el contrato `fondo-barrio` está implementado y desplegado; la pantalla web de guardianes sigue pendiente.
+
+- [x] `retirar_excedente` al fondo
+- [x] Contrato `fondo-barrio`: split de láminas
 - [ ] Propuestas y votación de guardianes
-- [ ] QR imprimible por ladrillo y cartel para la pared
+- [x] QR imprimible por ladrillo y cartel para la pared
 
 ### Fase 3 — Si sobra tiempo
 - [ ] Donar con passkey (sin Freighter)
@@ -583,12 +591,12 @@ Una tarea está terminada cuando: funciona en testnet, tiene tests (si es contra
 ## 14. Guion de la demo
 
 1. **El problema (30 s):** foto del mural deteriorado. "El barrio quiere restaurarlo, pero nadie confía en una colecta."
-2. **Donar en vivo (60 s):** alguien del jurado o del público escanea el QR, elige un ladrillo, deja un recuerdo y firma. **El ladrillo se pinta en la pantalla grande.**
-3. **Confianza (45 s):** se alcanza la meta. El firmante 1 aprueba → no pasa nada. El firmante 2 aprueba → el restaurador recibe el hito. Se muestra la tx en el explorador.
+2. **Donar en vivo (60 s):** el público escanea el QR y mira el mural en modo lectura desde el celular. En la laptop de presentación, una persona externa elige un ladrillo, deja un recuerdo y firma con Freighter. **El ladrillo se pinta en la pantalla grande.**
+3. **Confianza (45 s):** la donación elegida completa el faltante y se alcanza la meta. El firmante 1 aprueba → no pasa nada. El firmante 2 aprueba → el restaurador recibe el hito. Se muestra la tx en el explorador.
 4. **Memoria (30 s):** se abre el ladrillo donado: el recuerdo, con su hash on-chain. "Nadie puede alterarlo."
 5. **El diferencial (45 s):** venta de una lámina con reparto automático; los guardianes votan la próxima pared. "Ellos financian un mural. Nosotros, un barrio."
 
-> Tener preparado: cuentas de testnet fondeadas, campaña desplegada **casi** en la meta y un video de respaldo por si falla la conexión.
+> Tener preparado: cuentas de testnet fondeadas, campaña desplegada y **sembrada cerca de la meta** (con el faltante alineado al monto de la donación en vivo), y un video de respaldo por si falla la conexión. Ver [runbook de la demo](docs/runbook-demo.md).
 
 ## 15. Riesgos y decisiones
 

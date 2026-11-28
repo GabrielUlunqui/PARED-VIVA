@@ -2,6 +2,7 @@
 # [A7] Compila, despliega en testnet, genera bindings y actualiza frontend/src/contracts/config.ts.
 # Uso (desde soroban/): ./scripts/desplegar.sh [--pared-viva|--fondo-barrio|--ambos]
 # Por defecto despliega pared-viva. Para fondo-barrio se puede usar ARTISTA_IDENTIDAD=nombre y FONDO_BPS=3000.
+# Campaña: META_USDC=1000, MINIMO_USDC=1 y DIAS=14 por defecto; los hitos son 40/30/30 % de la meta.
 set -euo pipefail
 
 RED=testnet
@@ -61,6 +62,9 @@ generar_bindings() {
 
 desplegar_pared() {
   local admin token restaurador fondo firmante1 firmante2 firmante3 fecha_limite config_json id
+  local meta=$(( ${META_USDC:-1000} * 10000000 )) minimo=$(( ${MINIMO_USDC:-1} * 10000000 ))
+  local hito1=$(( meta * 40 / 100 )) hito2=$(( meta * 30 / 100 ))
+  local hito3=$(( meta - hito1 - hito2 ))
   echo "Compilando pared-viva..."
   stellar contract build --package pared-viva
 
@@ -71,10 +75,11 @@ desplegar_pared() {
   firmante1=$(stellar keys address firmante1)
   firmante2=$(stellar keys address firmante2)
   firmante3=$(stellar keys address firmante3)
-  fecha_limite=$(( $(date +%s) + 14 * 24 * 3600 ))
+  fecha_limite=$(( $(date +%s) + ${DIAS:-14} * 24 * 3600 ))
 
-  config_json=$(printf '{"admin":"%s","token":"%s","restaurador":"%s","fondo":"%s","firmantes":["%s","%s","%s"],"meta":"10000000000","fecha_limite":%s,"hitos":["4000000000","3000000000","3000000000"],"filas":20,"columnas":30,"aporte_minimo":"10000000"}' \
-    "$admin" "$token" "$restaurador" "$fondo" "$firmante1" "$firmante2" "$firmante3" "$fecha_limite")
+  config_json=$(printf '{"admin":"%s","token":"%s","restaurador":"%s","fondo":"%s","firmantes":["%s","%s","%s"],"meta":"%s","fecha_limite":%s,"hitos":["%s","%s","%s"],"filas":20,"columnas":30,"aporte_minimo":"%s"}' \
+    "$admin" "$token" "$restaurador" "$fondo" "$firmante1" "$firmante2" "$firmante3" "$meta" "$fecha_limite" "$hito1" "$hito2" "$hito3" "$minimo")
+  echo "Config: $config_json"
 
   echo "Desplegando pared-viva en testnet..."
   stellar contract deploy \

@@ -2,38 +2,59 @@
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
 
+/*
+  Sistema de diseño de Pared Viva — única fuente de verdad de tokens.
+  Significado de cada neón (usarlo siempre igual):
+    rosa    = actuar / donar (acción principal)
+    ámbar   = logro / meta / tiempo
+    violeta = comunidad / votación
+    celeste = finalizado / información fría
+  Radios: rounded-md en botones/inputs/chips, rounded-xl en tarjetas/paneles/modales,
+  rounded-full en badges/pills, y 2-3px en ladrillos del mural.
+*/
 @theme {
   --color-noche: #0a0812;
   --color-carbon: #15121e;
   --color-muro: #1a141f;
   --color-junta: #3a2a30;
   --color-ladrillo: #b5452f;
+  --color-ladrillo-osc: #6b2a1d;
+  --color-ladrillo-borde: #5c2f26;
+  --color-mortero: #8a3b2b;
+  --color-sombra: #1e1218;
   --color-rosa: #ff3d9a;
+  --color-rosa-osc: #9c1f5c;
   --color-violeta: #8b5cf6;
   --color-ambar: #ffb547;
   --color-celeste: #38e1ff;
+  --color-texto: #f3ede4;
+  --color-crema: #fff1e6;
+  --color-tenue-fuerte: #b8ad9f;
   --font-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
   --font-sans: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --radius-md: 0.5rem;
+  --radius-xl: 1rem;
 }
 
+/* Alias legacy: no borrar, los usan estilos de páginas todavía. */
 :root {
   color-scheme: dark;
-  --color-fondo: #0a0812;
-  --color-superficie: #15121e;
-  --color-texto: #f3ede4;
-  --color-tenue: rgb(243 237 228 / 0.6);
-  --color-primario: #ff3d9a;
-  --color-secundario: #8b5cf6;
-  --color-acento: #ffb547;
+  --color-fondo: var(--color-noche);
+  --color-superficie: var(--color-carbon);
+  --color-primario: var(--color-rosa);
+  --color-secundario: var(--color-violeta);
+  --color-acento: var(--color-ambar);
   --color-libre: #2b2633;
-  --color-borde: #3a2a30;
-  --color-ladrillo: #b5452f;
+  --color-borde: var(--color-junta);
+  --color-tenue: rgb(243 237 228 / 0.6);
   --radio: 0px;
   --espacio: 1rem;
-  --fuente: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --fuente-titulos: 'Bebas Neue', 'Arial Narrow', sans-serif;
-  --ladrillera: linear-gradient(#0a0812 2px, transparent 2px), linear-gradient(90deg, #0a0812 2px, transparent 2px),
-    linear-gradient(90deg, #0a0812 2px, transparent 2px);
+  --fuente: var(--font-sans);
+  --fuente-titulos: var(--font-display);
+  /* Aparejo corrido: líneas horizontales de junta + verticales desplazadas en filas alternas. */
+  --ladrillera: linear-gradient(var(--color-noche) 2px, transparent 2px),
+    linear-gradient(90deg, var(--color-noche) 2px, transparent 2px),
+    linear-gradient(90deg, var(--color-noche) 2px, transparent 2px);
 }
 
 @layer base {
@@ -43,13 +64,18 @@
     box-sizing: border-box;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     margin: 0;
     font-family: var(--fuente);
-    background: var(--color-fondo);
+    background: var(--color-noche);
     color: var(--color-texto);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom));
   }
 
   main {
@@ -81,7 +107,7 @@
   }
 
   a {
-    color: var(--color-acento);
+    color: var(--color-ambar);
   }
 
   code {
@@ -91,8 +117,21 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-acento);
+    outline: 2px solid var(--color-ambar);
     outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
@@ -101,14 +140,15 @@
     background-image: var(--ladrillera);
     background-size: 100% 12px, 36px 24px, 36px 24px;
     background-position: 0 0, 0 0, 18px 12px;
-    background-color: #8a3b2b;
+    background-color: var(--color-mortero);
   }
 
   .cartel {
     position: relative;
     background: linear-gradient(180deg, rgb(21 16 28 / 0.92), rgb(12 9 18 / 0.96));
-    border: 2px solid #5c2f26;
-    box-shadow: 8px 8px 0 #1e1218, inset 0 0 0 1px rgb(255 255 255 / 0.04);
+    border: 2px solid var(--color-ladrillo-borde);
+    border-radius: var(--radius-xl);
+    box-shadow: 8px 8px 0 var(--color-sombra), inset 0 0 0 1px rgb(255 255 255 / 0.04);
     padding: 2.25rem 1.5rem 1.5rem;
   }
 
@@ -120,8 +160,9 @@
     background-image: var(--ladrillera);
     background-size: 100% 12px, 36px 24px, 36px 24px;
     background-position: 0 0, 0 0, 18px 12px;
-    background-color: #8a3b2b;
-    border-bottom: 2px solid #0a0812;
+    background-color: var(--color-mortero);
+    border-bottom: 2px solid var(--color-noche);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   }
 
   .cartel > * {
@@ -141,18 +182,21 @@
 
   .boton-ladrillo {
     background: var(--color-ladrillo);
-    color: #fff1e6;
+    color: var(--color-crema);
     font-weight: 700;
     border: none;
-    border-bottom: 5px solid #6b2a1d;
+    border-radius: var(--radius-md);
+    border-bottom: 5px solid var(--color-ladrillo-osc);
     box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.18);
     transition: transform 0.15s, border-width 0.15s, background 0.2s, box-shadow 0.2s;
   }
 
   .boton-ladrillo:hover {
     background: var(--color-rosa);
-    border-color: #9c1f5c;
-    box-shadow: 0 0 28px #ff3d9a88, inset 0 2px 0 rgb(255 255 255 / 0.25);
+    color: var(--color-noche);
+    border-color: var(--color-rosa-osc);
+    text-shadow: none;
+    box-shadow: 0 0 28px rgb(255 61 154 / 0.5), inset 0 2px 0 rgb(255 255 255 / 0.25);
   }
 
   .boton-ladrillo:active {
@@ -164,32 +208,103 @@
     background: transparent;
     color: var(--color-rosa);
     border: 2px solid currentColor;
+    border-radius: var(--radius-md);
     text-shadow: 0 0 8px currentColor;
     box-shadow: 0 0 12px -2px currentColor, inset 0 0 12px -4px currentColor;
-    transition: background 0.2s, color 0.2s;
+    transition: background 0.2s, color 0.2s, text-shadow 0.2s;
   }
 
   .boton-neon:hover {
     background: var(--color-rosa);
-    color: #fff;
+    color: var(--color-noche);
+    text-shadow: none;
   }
 
   .caja {
     background: var(--color-muro);
     border: 2px solid var(--color-junta);
+    border-radius: var(--radius-md);
   }
 
   .barra-ladrillos {
     height: 14px;
     background: var(--color-muro);
     border: 2px solid var(--color-junta);
+    border-radius: var(--radius-md);
     padding: 2px;
   }
 
   .barra-ladrillos > div {
     height: 100%;
-    background-image: repeating-linear-gradient(90deg, transparent 0 14px, #0a0812 14px 16px),
-      linear-gradient(90deg, #8b5cf6, #ff3d9a, #ffb547);
+    border-radius: calc(var(--radius-md) - 4px);
+    background-image: repeating-linear-gradient(90deg, transparent 0 14px, var(--color-noche) 14px 16px),
+      linear-gradient(90deg, var(--color-violeta), var(--color-rosa), var(--color-ambar));
     transition: width 0.8s ease;
+  }
+
+  /* Animaciones compartidas (todas quedan anuladas con prefers-reduced-motion por la regla global). */
+  .aparecer {
+    animation: aparecer 0.5s ease-out both;
+  }
+
+  @keyframes aparecer {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  .revelar {
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  }
+
+  .revelar.visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  .presionable {
+    transition: transform 0.18s ease-out, box-shadow 0.18s ease-out;
+  }
+
+  .presionable:hover {
+    transform: translateY(-2px);
+  }
+
+  .presionable:active {
+    transform: translateY(1px);
+  }
+
+  .brillo-neon {
+    transition: box-shadow 0.2s ease-out;
+  }
+
+  .brillo-neon:hover {
+    box-shadow: 0 0 24px rgb(255 61 154 / 0.5);
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--color-muro) 25%, var(--color-carbon) 50%, var(--color-muro) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+    border-radius: var(--radius-md);
+  }
+
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .revelar {
+      opacity: 1;
+      transform: none;
+    }
   }
 }

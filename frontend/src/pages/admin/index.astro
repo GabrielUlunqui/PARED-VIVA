@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import PanelCampanias from '../../components/admin/PanelCampanias.astro';
 import PanelFirmantes from '../../components/admin/PanelFirmantes.astro';
-import { ADMIN_WEB } from 'astro:env/server';
+import { ADMIN_WEB, ADMIN_CLAVE } from 'astro:env/server';
 
 export const prerender = false;
 
@@ -11,6 +11,8 @@ const adminActivo = ADMIN_WEB;
 if (!adminActivo) {
   Astro.response.status = 404;
 }
+// La clave es respaldo opcional: solo se muestra el formulario si está configurada (nunca se imprime).
+const hayClave = !!ADMIN_CLAVE;
 ---
 
 {
@@ -26,18 +28,46 @@ if (!adminActivo) {
       <p class="caja m-0 mt-4 p-3 text-sm text-ambar">Panel de administración de testnet. Las claves viven en este servidor.</p>
 
       <div data-vista-login class="mx-auto mt-8 max-w-md">
-        <form data-form-login class="cartel grid gap-3">
+        <div class="cartel grid gap-4">
           <h2 class="m-0 text-3xl">Entrar</h2>
-          <div class="grid gap-1">
-            <label for="admin-clave" class="text-sm font-bold">Clave de administración</label>
-            <input id="admin-clave" type="password" required autocomplete="current-password" class="caja w-full px-3 py-2 text-sm" />
+
+          <div data-login-sin-wallet class="grid gap-3" hidden>
+            <p class="m-0 text-sm text-white/70">Para entrar al panel usás tu billetera de admin: no hace falta contraseña.</p>
+            <button type="button" class="boton-ladrillo presionable cursor-pointer rounded-md px-5 py-3 text-sm font-bold uppercase tracking-wider" data-conectar-admin>
+              Conectá tu billetera de admin
+            </button>
+            <p class="m-0 text-xs text-white/50">Se abre el selector de billetera de arriba a la derecha.</p>
           </div>
-          <div>
-            <button type="submit" class="boton-ladrillo presionable w-full cursor-pointer rounded-md px-5 py-3 text-sm font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60" data-login-boton>Entrar</button>
+
+          <div data-login-con-wallet class="grid gap-3" hidden>
+            <p class="m-0 text-sm text-white/70">Tu billetera está conectada. Entrás firmando un mensaje: no se mueve plata ni se comparte tu clave.</p>
+            <button type="button" class="boton-ladrillo presionable cursor-pointer rounded-md px-5 py-3 text-sm font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60" data-entrar-wallet>
+              Entrar con mi billetera (<span data-direccion-corta></span>)
+            </button>
+            <p class="m-0 text-xs text-white/50" data-login-progreso aria-live="polite"></p>
           </div>
+
+          <p class="m-0 text-sm" data-login-estado aria-live="polite">Viendo si ya tenés sesión…</p>
           <p class="m-0 text-sm font-bold text-rosa" data-login-error aria-live="polite"></p>
-        </form>
-        <p class="m-0 mt-3 text-center text-sm text-white/50" data-login-estado aria-live="polite"></p>
+          <button type="button" class="boton-neon presionable cursor-pointer rounded-md px-4 py-2 text-xs font-bold uppercase tracking-wider" data-cambiar-wallet hidden>
+            Cambiar de billetera
+          </button>
+
+          {hayClave && (
+            <details class="text-sm">
+              <summary class="cursor-pointer text-white/60 hover:text-white">Entrar con clave</summary>
+              <form data-form-login class="mt-3 grid gap-3">
+                <div class="grid gap-1">
+                  <label for="admin-clave" class="text-sm font-bold">Clave de administración</label>
+                  <input id="admin-clave" type="password" required autocomplete="current-password" class="caja w-full px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <button type="submit" class="boton-neon presionable w-full cursor-pointer rounded-md px-5 py-3 text-sm font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60" data-login-boton>Entrar con clave</button>
+                </div>
+              </form>
+            </details>
+          )}
+        </div>
       </div>
 
       <div data-vista-panel hidden>
@@ -59,45 +89,138 @@ if (!adminActivo) {
 
 <script>
   import { getJSON, postJSON, toast } from '../../components/admin/util';
+  import * as wallet from '../../lib/stellar/wallet';
 
   const login = document.querySelector<HTMLElement>('[data-vista-login]');
   const panel = document.querySelector<HTMLElement>('[data-vista-panel]');
   if (login && panel) {
+    const sinWallet = document.querySelector<HTMLElement>('[data-login-sin-wallet]')!;
+    const conWallet = document.querySelector<HTMLElement>('[data-login-con-wallet]')!;
+    const estadoEl = document.querySelector<HTMLElement>('[data-login-estado]')!;
+    const errorEl = document.querySelector<HTMLElement>('[data-login-error]')!;
+    const progresoEl = document.querySelector<HTMLElement>('[data-login-progreso]');
+
     const mostrarPanel = () => {
       login.hidden = true;
       panel.hidden = false;
       document.dispatchEvent(new CustomEvent('admin:sesion'));
     };
 
-    // Si ya hay sesión viva, entra directo.
+    const cerrarSesion = async (aviso?: string) => {
+      try {
+        await postJSON('/api/admin/sesion', undefined, 'DELETE');
+      } catch {}
+      panel.hidden = true;
+      login.hidden = false;
+      estadoEl.hidden = true;
+      if (aviso) toast(aviso, 'info');
+      refrescarBilletera();
+    };
+
+    async function refrescarBilletera() {
+      const direccion = await wallet.direccionActual().catch(() => null);
+      sinWallet.hidden = !!direccion;
+      conWallet.hidden = !direccion;
+      if (direccion) {
+        const corta = document.querySelector<HTMLElement>('[data-direccion-corta]');
+        if (corta) corta.textContent = wallet.abreviar(direccion);
+      }
+    }
+
+    // Si ya hay sesión viva, entra directo; si no, muestra el camino de billetera.
     getJSON('/api/admin/estado')
       .then(() => mostrarPanel())
-      .catch(() => {});
+      .catch(() => {
+        estadoEl.hidden = true;
+        refrescarBilletera();
+      });
 
-    document.querySelector('[data-form-login]')?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const boton = document.querySelector<HTMLButtonElement>('[data-login-boton]')!;
-      const error = document.querySelector<HTMLElement>('[data-login-error]')!;
-      const clave = (document.querySelector<HTMLInputElement>('#admin-clave')!).value;
+    const mostrarSinAcceso = () => {
+      const cambiar = document.querySelector<HTMLElement>('[data-cambiar-wallet]');
+      if (cambiar) cambiar.hidden = false;
+    };
+    document.querySelector('[data-cambiar-wallet]')?.addEventListener('click', () => {
+      // Abre el panel de la billetera del header para elegir otra cuenta o billetera.
+      const chip = document.getElementById('wallet-chip');
+      const botonHeader = document.getElementById('conectar-wallet');
+      (chip && !chip.hidden ? chip : botonHeader)?.click();
+    });
+
+    document.querySelector('[data-conectar-admin]')?.addEventListener('click', () => {
+      // El botón real de conexión vive en el header (instancia única): se le hace clic ahí.
+      const botonHeader = document.getElementById('conectar-wallet');
+      if (botonHeader) botonHeader.click();
+      else toast('Usá el botón "Conectar billetera" de arriba a la derecha.', 'info');
+    });
+
+    document.querySelector('[data-entrar-wallet]')?.addEventListener('click', async (e) => {
+      const boton = e.currentTarget as HTMLButtonElement;
+      errorEl.textContent = '';
+      const cambiar = document.querySelector<HTMLElement>('[data-cambiar-wallet]');
+      if (cambiar) cambiar.hidden = true;
       boton.disabled = true;
-      error.textContent = '';
+      const progreso = (texto: string) => {
+        if (progresoEl) progresoEl.textContent = texto;
+      };
       try {
-        await postJSON('/api/admin/sesion', { clave });
+        const direccion = await wallet.direccionActual();
+        if (!direccion) throw new Error('Primero conectá tu billetera de admin.');
+        progreso('Pidiendo el desafío al servidor…');
+        const res = await fetch(`/api/admin/desafio?direccion=${encodeURIComponent(direccion)}`);
+        if (res.status === 404) throw new Error('El inicio con billetera todavía no está disponible en este servidor.');
+        if (res.status === 403) {
+          mostrarSinAcceso();
+          throw new Error('Esta billetera no tiene acceso al panel.');
+        }
+        const datos = (await res.json().catch(() => ({}))) as { desafio?: string; error?: string };
+        if (!res.ok || !datos.desafio) throw new Error(datos.error ?? 'No se pudo pedir el desafío. Probá de nuevo.');
+        const desafio = datos.desafio;
+        // firmarMensaje la agrega el backend compartido en lib/stellar; se toma dinámico para compilar antes de que exista.
+        const firmarMensaje = (wallet as unknown as { firmarMensaje?: (mensaje: string) => Promise<{ firma: string; direccion: string }> }).firmarMensaje;
+        if (!firmarMensaje) throw new Error('Todavía no está disponible la firma con billetera. Probá de nuevo en unos minutos.');
+        progreso('Firmando con tu billetera…');
+        const firmado = await firmarMensaje(desafio);
+        progreso('Entrando…');
+        await postJSON('/api/admin/sesion', { direccion: firmado.direccion, firma: firmado.firma });
+        progreso('');
         mostrarPanel();
       } catch (err) {
-        error.textContent = (err as Error).message;
+        progreso('');
+        errorEl.textContent = (err as Error).message;
       } finally {
         boton.disabled = false;
       }
     });
 
-    document.querySelector('[data-salir]')?.addEventListener('click', async () => {
+    document.querySelector('[data-form-login]')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const boton = document.querySelector<HTMLButtonElement>('[data-login-boton]')!;
+      const clave = (document.querySelector<HTMLInputElement>('#admin-clave')!).value;
+      boton.disabled = true;
+      errorEl.textContent = '';
       try {
-        await postJSON('/api/admin/sesion', undefined, 'DELETE');
-      } catch {}
-      toast('Sesión cerrada.', 'info');
-      panel.hidden = true;
-      login.hidden = false;
+        await postJSON('/api/admin/sesion', { clave });
+        mostrarPanel();
+      } catch (err) {
+        errorEl.textContent = (err as Error).message;
+      } finally {
+        boton.disabled = false;
+      }
+    });
+
+    document.querySelector('[data-salir]')?.addEventListener('click', () => cerrarSesion('Sesión cerrada.'));
+
+    // Al cambiar de billetera: refrescar el login y, si la nueva no tiene acceso, cerrar la sesión de admin.
+    window.addEventListener('pv:wallet-cambiada', async (e) => {
+      refrescarBilletera();
+      const direccion = (e as CustomEvent).detail?.direccion as string | null | undefined;
+      if (!direccion || panel.hidden) return;
+      try {
+        const res = await fetch(`/api/admin/desafio?direccion=${encodeURIComponent(direccion)}`);
+        if (res.status === 403) await cerrarSesion('Cambiaste a una billetera sin acceso: se cerró la sesión de administración.');
+      } catch {
+        // errores de red no cierran la sesión
+      }
     });
 
     // Pestañas
@@ -116,3 +239,9 @@ if (!adminActivo) {
     });
   }
 </script>
+
+<style>
+  [hidden] {
+    display: none !important;
+  }
+</style>

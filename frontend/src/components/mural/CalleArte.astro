@@ -7,7 +7,7 @@ const { class: clase } = Astro.props;
 const obras = [
   { id: 'fader', texto: 'La mazamorra' },
   { id: 'noche', texto: 'Noche estrellada' },
-  { id: 'mural', texto: 'Mural del barrio' },
+  { id: 'cerro', texto: 'Cerro de la Gloria' },
 ];
 ---
 
@@ -52,7 +52,7 @@ const obras = [
   import obras from './obras.json';
 
   type Tres = typeof import('three');
-  type Clave = 'fader' | 'noche' | 'mural';
+  type Clave = 'fader' | 'noche' | 'cerro';
   interface Pose {
     p: Vector3;
     q: Quaternion;
@@ -62,9 +62,9 @@ const obras = [
   const INFO: Record<Clave, { titulo: string; autor: string }> = {
     fader: { titulo: 'La mazamorra', autor: 'Fernando Fader · 1927' },
     noche: { titulo: 'La noche estrellada', autor: 'Vincent van Gogh · 1889' },
-    mural: { titulo: 'Mural del barrio', autor: 'Pintado por los vecinos · 2026' },
+    cerro: { titulo: 'Ejército de los Andes', autor: 'Juan Manuel Ferrari · 1914 · Cerro de la Gloria, Mendoza' },
   };
-  const ORDEN: Clave[] = ['fader', 'noche', 'mural'];
+  const ORDEN: Clave[] = ['fader', 'noche', 'cerro'];
   const DURACION_TOTAL = 13500;
   const PAUSA = 8000;
   const PISO = -6;
@@ -72,7 +72,7 @@ const obras = [
   const H = 0.22;
   const CX = 5;
   const BASE = PISO + 0.6;
-  const PALETA = ['#ff3d9a', '#8b5cf6', '#ffb547', '#38e1ff', '#c6f432'];
+  const SIN_ANIMACION = { titulo: 'Mural del barrio', autor: 'Pintado por los vecinos · 2026' };
   const mediaMovimiento = matchMedia('(prefers-reduced-motion: reduce)');
   const quieto = () => mediaMovimiento.matches;
 
@@ -97,10 +97,9 @@ const obras = [
     const avance = seccion.querySelector('.obra-avance') as HTMLElement;
     const control = seccion.querySelector('[data-control-animacion]') as HTMLButtonElement;
     canvas.classList.add('estatica');
-    titulo.textContent = INFO.mural.titulo;
-    autor.textContent = INFO.mural.autor;
+    titulo.textContent = SIN_ANIMACION.titulo;
+    autor.textContent = SIN_ANIMACION.autor;
     avance.style.width = '100%';
-    marcarObra(botonesDe(seccion), 'mural');
     botonesDe(seccion).forEach((b) => (b.disabled = true));
     control.disabled = true;
     control.textContent = 'Animación pausada';
@@ -180,24 +179,11 @@ const obras = [
 
     function destinos(obra: Clave): Pose[] {
       const lista: Pose[] = [];
-      if (obra === 'mural') {
-        const { c, r } = obras.noche;
-        for (let y = 0; y < r; y++)
-          for (let x = 0; x < c; x++) {
-            const adoptado = Math.random() < 0.22;
-            lista.push({
-              p: new THREE.Vector3(CX + (x - c / 2 + (y % 2 ? 0.5 : 0)) * W, BASE + y * H, 0),
-              q: quat(),
-              c: new THREE.Color(adoptado ? PALETA[Math.floor(Math.random() * PALETA.length)] : '#2b2633'),
-            });
-          }
-      } else {
-        const { c, r, hex } = obras[obra];
-        for (let y = 0; y < r; y++)
-          for (let x = 0; x < c; x++) {
-            lista.push({ p: new THREE.Vector3(CX + (x - c / 2 + 0.5) * W, BASE + y * H, 0), q: quat(), c: colorHex(hex, y * c + x) });
-          }
-      }
+      const { c, r, hex } = obras[obra];
+      for (let y = 0; y < r; y++)
+        for (let x = 0; x < c; x++) {
+          lista.push({ p: new THREE.Vector3(CX + (x - c / 2 + 0.5) * W, BASE + y * H, 0), q: quat(), c: colorHex(hex, y * c + x) });
+        }
       while (lista.length < N) lista.push(pila(lista.length));
       return lista;
     }
@@ -235,7 +221,7 @@ const obras = [
       marcarObra(botones, obra);
       const lista = destinos(obra);
       const orden = mezclar(N);
-      const enObra = obra === 'fader' ? obras.fader.c * obras.fader.r : N;
+      const enObra = obras[obra].c * obras[obra].r;
       for (let k = 0; k < N; k++) {
         const i = orden[k];
         const d = lista[k];

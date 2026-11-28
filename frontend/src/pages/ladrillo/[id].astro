@@ -5,6 +5,7 @@ import { CONTRATOS, RED } from '../../contracts/config';
 import { datos } from '../../lib/datos';
 import { leerRecuerdo, urlGateway } from '../../lib/ipfs';
 import { formatearUsdc, type Campania, type Ladrillo, type Recuerdo } from '../../lib/tipos';
+import { acortarDireccion } from '../../lib/formato';
 
 export const prerender = false;
 
@@ -38,6 +39,7 @@ const qr = await QRCode.toString(url, { type: 'svg', margin: 1, color: { dark: '
 const fecha = ladrillo ? new Date(ladrillo.fecha * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 const explorador = `${RED.explorador}/contract/${CONTRATOS.paredViva}`;
 if (!campania) Astro.response.status = 404;
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
 ---
 
 <Base titulo={`Ladrillo #${Astro.params.id}`}>
@@ -64,7 +66,7 @@ if (!campania) Astro.response.status = 404;
                   El recuerdo de <span class="neon text-rosa">{recuerdo?.alias ?? 'un vecino'}</span>
                 </h1>
                 {recuerdo?.imagenCid && (
-                  <img src={urlGateway(recuerdo.imagenCid)} alt={`Foto del recuerdo del ladrillo #${id}`} class="mt-6 max-h-[420px] w-full border-2 border-junta object-cover" />
+                  <img src={urlGateway(recuerdo.imagenCid)} alt={`Foto del recuerdo del ladrillo #${id}`} loading="lazy" decoding="async" width="800" height="600" class="mt-6 max-h-[420px] w-full border-2 border-junta object-cover" />
                 )}
                 {recuerdo ? (
                   <blockquote class="m-0 mt-6 border-l-4 border-ladrillo pl-5 text-2xl leading-snug md:text-3xl">“{recuerdo.texto}”</blockquote>
@@ -92,7 +94,7 @@ if (!campania) Astro.response.status = 404;
             <div class="cartel !p-4 !pt-8">
               <p class="etiqueta m-0 mb-3">Su lugar en la pared</p>
               <div class="posicion relative w-full" style={`--x: ${columna}; --y: ${fila}; --columnas: ${columnas}; --filas: ${filas}`}>
-                <img src="/mural.jpg" alt="Mural del barrio" class="block w-full opacity-40 grayscale" />
+                <img src="/mural.jpg" alt="Mural del barrio" width="1200" height="800" loading="lazy" decoding="async" class="block w-full opacity-40 grayscale" />
                 <span class="marca absolute" />
               </div>
             </div>
@@ -104,17 +106,19 @@ if (!campania) Astro.response.status = 404;
                   <dd class="m-0 font-display text-3xl text-ambar">{formatearUsdc(ladrillo.monto)}</dd>
                 </div>
                 <div>
-                  <dt class="etiqueta">Donante</dt>
-                  <dd class="m-0"><code>{ladrillo.donante}</code></dd>
+                  <dt class="etiqueta">Adoptado por</dt>
+                  <dd class="m-0">
+                    <a href={`${RED.explorador}/account/${ladrillo.donante}`} target="_blank" rel="noopener" class="text-ambar"><code>{acortarDireccion(ladrillo.donante)}</code></a>
+                  </dd>
                 </div>
-                <div>
-                  <dt class="etiqueta">Recuerdo en IPFS</dt>
-                  <dd class="m-0"><a href={urlGateway(ladrillo.recuerdoCid)} target="_blank" rel="noopener"><code>{ladrillo.recuerdoCid}</code></a></dd>
-                </div>
-                <p class="caja m-0 p-3 text-white/70">
-                  El CID de este recuerdo está anclado on-chain en el contrato de Pared Viva: si alguien cambiara el contenido, el hash dejaría de coincidir.{' '}
-                  <a href={explorador} target="_blank" rel="noopener">Ver el contrato en el explorador</a>
-                </p>
+                <details class="caja m-0 p-3 text-white/70">
+                  <summary class="cursor-pointer font-bold text-white/80">Detalles técnicos</summary>
+                  <p class="m-0 mt-2 text-sm">
+                    El recuerdo está en IPFS (<a href={urlGateway(ladrillo.recuerdoCid)} target="_blank" rel="noopener" class="text-ambar"><code class="break-all">{ladrillo.recuerdoCid}</code></a>) y su huella quedó anclada en el contrato: si alguien cambiara el contenido, el hash dejaría de coincidir.{' '}
+                    <a href={explorador} target="_blank" rel="noopener" class="text-ambar">Ver el contrato en el explorador</a>
+                  </p>
+                  <p class="m-0 mt-2 break-all text-sm text-white/50">Dirección completa: <code>{ladrillo.donante}</code></p>
+                </details>
               </dl>
             )}
 
@@ -146,6 +150,11 @@ if (!campania) Astro.response.status = 404;
     display: block;
     width: 100%;
     height: auto;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .posicion .marca {
+      animation: none;
+    }
   }
   @keyframes latido {
     50% {

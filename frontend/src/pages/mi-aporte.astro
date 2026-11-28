@@ -1,41 +1,66 @@
 ---
 import Base from '../layouts/Base.astro';
 import PanelPrueba from '../components/prueba/PanelPrueba.astro';
+import Boton from '../components/ui/Boton.astro';
 ---
 
 <Base titulo="Mi aporte">
-  <h1>Mi aporte</h1>
-  <PanelPrueba />
+  <div class="mx-auto max-w-4xl">
+    <p class="etiqueta m-0">Tu lugar en la pared</p>
+    <h1 class="m-0">Mi <span class="neon text-rosa">aporte</span></h1>
+    <p class="m-0 mt-3 max-w-2xl text-white/70">
+      Para ver y recuperar tus aportes conectá tu billetera (podés usar la de prueba: se crea en este navegador y usa dinero de mentira de la red de
+      testeo).
+    </p>
+    <PanelPrueba />
 
-  <section data-sin-wallet hidden>
-    <p>Conectá tu wallet para ver tus aportes y tus ladrillos.</p>
-    <button type="button" class="accion" data-conectar>Conectar wallet</button>
-  </section>
+    <section data-sin-wallet hidden>
+      <div class="cartel mt-6 text-center">
+        <p class="m-0 text-white/70">Todavía no conectaste tu billetera.</p>
+        <Boton type="button" class="mt-4" data-conectar>Conectar mi billetera</Boton>
+      </div>
+    </section>
 
-  <section data-contenido hidden>
-    <div class="cifras">
-      <div class="cifra"><span>Total aportado</span><strong data-total>—</strong></div>
-      <div class="cifra"><span>Ladrillos adoptados</span><strong data-cantidad>—</strong></div>
-      <div class="cifra"><span>Guardián</span><strong data-guardian>—</strong></div>
-    </div>
+    <section data-contenido hidden>
+      <div class="cifras mt-6 grid gap-4 sm:grid-cols-3" aria-busy="true">
+        <div class="cartel !p-4" data-caja-total>
+          <p class="etiqueta m-0">Total aportado</p>
+          <p class="m-0 mt-1 font-display text-3xl text-ambar" data-total><span class="cargando-cifra inline-block h-6 w-24 animate-pulse bg-white/10"></span></p>
+        </div>
+        <div class="cartel !p-4">
+          <p class="etiqueta m-0">Ladrillos adoptados</p>
+          <p class="m-0 mt-1 font-display text-3xl text-ambar" data-cantidad><span class="inline-block h-6 w-12 animate-pulse bg-white/10"></span></p>
+        </div>
+        <div class="cartel !p-4">
+          <p class="etiqueta m-0">Guardián del mural</p>
+          <p class="m-0 mt-1 font-display text-3xl text-ambar" data-guardian><span class="inline-block h-6 w-12 animate-pulse bg-white/10"></span></p>
+          <p class="m-0 mt-1 text-sm text-white/60" data-guardian-detalle hidden>
+            Los guardianes cuidan la memoria del mural y ayudan a elegir la próxima pared. <a href="/guardianes" class="text-ambar">Conocé más</a>
+          </p>
+        </div>
+      </div>
 
-    <div class="reembolso" data-reembolso hidden>
-      <p>La campaña no alcanzó la meta antes de la fecha límite. Podés recuperar todo lo que aportaste.</p>
-      <button type="button" class="accion" data-reembolsar>Recuperar mi aporte</button>
-    </div>
+      <div class="cartel mt-6 border-l-4 !border-l-rosa" data-reembolso hidden>
+        <p class="m-0 text-white/80">La campaña no alcanzó la meta antes de la fecha límite. Podés recuperar todo lo que aportaste.</p>
+        <Boton type="button" class="mt-4" data-reembolsar>Recuperar mi aporte</Boton>
+      </div>
 
-    <p class="estado" data-estado role="status" hidden></p>
-    <p class="exito" data-exito role="status" hidden></p>
+      <p class="estado m-0 mt-4 text-violeta" data-estado role="status" hidden></p>
+      <p class="exito m-0 mt-4 font-bold text-ambar" data-exito role="status" hidden></p>
 
-    <h2>Mis ladrillos</h2>
-    <ul class="ladrillos" data-ladrillos></ul>
-  </section>
+      <h2 class="m-0 mt-8">Mis ladrillos</h2>
+      <ul class="ladrillos mt-3 text-white/80" data-ladrillos>
+        <li class="animate-pulse text-white/40">Cargando tus aportes…</li>
+      </ul>
+    </section>
 
-  <p class="error" data-error role="alert" hidden></p>
+    <p class="error m-0 mt-4 text-rosa" data-error role="alert" hidden></p>
+  </div>
 </Base>
 
 <script>
   import { datos } from '../lib/datos';
+  import { formatearFecha } from '../lib/formato';
   import { traducirError } from '../lib/stellar/errores';
   import { alCambiarWallet, conectarYAvisar } from '../lib/stellar/sesion';
   import { esTxReal, reembolsar, urlTransaccion, type EtapaTx } from '../lib/stellar/transacciones';
@@ -45,8 +70,8 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
   const botonReembolsar = $('[data-reembolsar]') as HTMLButtonElement;
 
   const MENSAJES_ETAPA: Record<EtapaTx, string> = {
-    firmando: 'Confirmá el reembolso en Freighter…',
-    enviando: 'Enviando a la red Stellar…',
+    firmando: 'Confirmá el reembolso en tu billetera…',
+    enviando: 'Confirmando, unos segundos…',
   };
 
   let direccion: string | null = null;
@@ -68,18 +93,14 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
       $('[data-total]').textContent = reembolsado ? 'Reembolsado' : formatearUsdc(aporte.total);
       $('[data-cantidad]').textContent = String(aporte.ladrillos.length);
       $('[data-guardian]').textContent = aporte.guardian ? 'Sí' : 'No';
+      $('[data-guardian-detalle]').hidden = !aporte.guardian;
       $('[data-reembolso]').hidden = !(c.estado === 'Fallida' && aporte.total > 0n);
       botonReembolsar.textContent = `Recuperar ${formatearUsdc(aporte.total)}`;
       $('[data-ladrillos]').innerHTML = aporte.ladrillos.length
         ? aporte.ladrillos
-            .map(
-              (l) =>
-                `<li><a href="/ladrillo/${l.id}">Ladrillo #${l.id}</a> · ${formatearUsdc(l.monto)} · ${new Date(
-                  l.fecha * 1000,
-                ).toLocaleDateString('es-AR')}</li>`,
-            )
+            .map((l) => `<li><a href="/ladrillo/${l.id}" class="text-ambar">Ladrillo #${l.id}</a> · ${formatearUsdc(l.monto)} · ${formatearFecha(l.fecha)}</li>`)
             .join('')
-        : '<li>Todavía no adoptaste ningún ladrillo. <a href="/">Adoptá uno en el mural</a>.</li>';
+        : '<li class="text-white/60">Todavía no adoptaste ningún ladrillo. <a href="/" class="text-ambar">Adoptá uno en el mural</a>.</li>';
     } catch (e) {
       mostrar('[data-error]', traducirError(e));
     }
@@ -100,8 +121,8 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
     mostrar('[data-error]', null);
     try {
       const { valor, txHash } = await reembolsar(direccion, (etapa) => mostrar('[data-estado]', MENSAJES_ETAPA[etapa]));
-      const enlace = esTxReal(txHash) ? ` <a href="${urlTransaccion(txHash)}" target="_blank" rel="noopener">Ver transacción</a>` : '';
-      mostrar('[data-exito]', `Recuperaste ${formatearUsdc(valor)}. Ya están de vuelta en tu wallet.${enlace}`, true);
+      const enlace = esTxReal(txHash) ? ` <a href="${urlTransaccion(txHash)}" target="_blank" rel="noopener" class="text-ambar">Ver el comprobante público</a>` : '';
+      mostrar('[data-exito]', `Recuperaste ${formatearUsdc(valor)}. Ya están de vuelta en tu billetera.${enlace}`, true);
     } catch (e) {
       mostrar('[data-error]', traducirError(e));
     } finally {
@@ -119,62 +140,13 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
 </script>
 
 <style>
-  .cifras {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: var(--espacio);
-    margin: var(--espacio) 0;
+  .ladrillos li {
+    margin-bottom: 0.5rem;
   }
-  .cifra {
-    background: var(--color-superficie, white);
-    border: 1px solid var(--color-borde);
-    border-radius: var(--radio);
-    padding: var(--espacio);
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  .cifra span {
-    font-size: 0.85rem;
-    opacity: 0.75;
-  }
-  .cifra strong {
-    font-size: 1.3rem;
-  }
-  .reembolso {
-    border: 1px solid var(--color-primario);
-    border-radius: var(--radio);
-    padding: var(--espacio);
-    margin-bottom: var(--espacio);
-  }
-  .reembolso p {
-    margin-top: 0;
-  }
-  .accion {
-    border: none;
-    border-radius: var(--radio);
-    padding: 0.6rem 1.2rem;
-    font: inherit;
-    font-weight: 600;
-    background: var(--color-primario);
-    color: white;
-    cursor: pointer;
-  }
-  .accion:disabled {
-    opacity: 0.6;
-    cursor: wait;
-  }
-  .estado,
-  .exito {
-    color: var(--color-secundario);
-  }
-  .exito {
-    font-weight: 600;
+  .ladrillos :global(a) {
+    text-underline-offset: 3px;
   }
   .error {
-    color: var(--color-primario);
-  }
-  .ladrillos {
-    padding-left: 1.2rem;
+    font-weight: 600;
   }
 </style>

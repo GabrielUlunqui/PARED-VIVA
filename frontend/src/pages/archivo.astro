@@ -25,7 +25,9 @@ const visibles = ladrillos.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)
 const recuerdos: { l: Ladrillo; r: Recuerdo | null }[] = await Promise.all(
   visibles.map(async (l) => ({ l, r: await leerRecuerdo(l.recuerdoCid).catch(() => null) })),
 );
-const fecha = (s: number) => new Date(s * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+import { formatearFecha } from '../lib/formato';
+const fecha = formatearFecha;
+Astro.response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
 ---
 
 <Base titulo="Archivo">
@@ -59,13 +61,13 @@ const fecha = (s: number) => new Date(s * 1000).toLocaleDateString('es-AR', { da
             <a href={`/ladrillo/${l.id}`} class="block text-inherit no-underline transition hover:-translate-y-2">
               <Tarjeta class="flex flex-col">
                 {r?.imagenCid && (
-                  <img src={urlGateway(r.imagenCid)} alt="" loading="lazy" class="mb-4 aspect-[4/3] w-full border-2 border-junta object-cover" />
+                  <img src={urlGateway(r.imagenCid)} alt={`Foto del recuerdo de ${r.alias ?? 'un vecino'}, ladrillo #${l.id}`} loading="lazy" decoding="async" width="800" height="600" class="mb-4 aspect-[4/3] w-full border-2 border-junta object-cover" />
                 )}
                 <p class="m-0 flex-1 text-lg">{r ? `“${r.texto}”` : 'Este recuerdo no se pudo cargar desde IPFS en este momento.'}</p>
                 <p class:list={['m-0 mt-6 text-sm uppercase tracking-wider', COLORES[i % COLORES.length]]}>
                   {r?.alias ?? 'Anónimo'} · Ladrillo #{l.id}
                 </p>
-                <p class="m-0 text-xs text-white/40">{fecha(l.fecha)}</p>
+                <p class="m-0 text-xs text-white/60">{fecha(l.fecha)}</p>
               </Tarjeta>
             </a>
           ))}
@@ -85,6 +87,7 @@ const fecha = (s: number) => new Date(s * 1000).toLocaleDateString('es-AR', { da
             <a
               href={`/archivo?pagina=${n}`}
               aria-current={n === pagina ? 'page' : undefined}
+              aria-label={`Página ${n}${n === pagina ? ', actual' : ''}`}
               class:list={[
                 'caja min-w-10 px-3 py-2 text-center text-sm font-bold no-underline',
                 n === pagina ? '!border-ambar !bg-ambar text-noche' : 'text-white/70 hover:text-white',

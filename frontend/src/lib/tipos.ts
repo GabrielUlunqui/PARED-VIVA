@@ -52,11 +52,27 @@ export function parsearUsdc(texto: string): bigint | null {
   const limpio = texto.trim().replace(',', '.');
   const match = limpio.match(/^(\d+)(?:\.(\d{1,7}))?$/);
   if (!match) return null;
+  if (match[2] && match[2].length > DECIMALES_USDC) return null; // más de 7 decimales: usar errorMontoUsdc para el mensaje
   return BigInt(match[1]) * UNIDAD_USDC + BigInt((match[2] ?? '').padEnd(DECIMALES_USDC, '0'));
 }
 
+/** Mensaje específico para un monto que parsearUsdc rechazó (o null si es válido). */
+export function errorMontoUsdc(texto: string): string | null {
+  const limpio = texto.trim().replace(',', '.');
+  const decimales = limpio.split('.')[1];
+  if (decimales && decimales.length > DECIMALES_USDC) return 'USDC tiene hasta 7 decimales. Redondeá el monto.';
+  if (!/^(\d+)(\.\d{1,7})?$/.test(limpio)) return 'Ingresá un monto válido, por ejemplo 5 o 2,50.';
+  return null;
+}
+
 export function formatearUsdc(monto: bigint): string {
-  const entero = monto / UNIDAD_USDC;
-  const decimales = (monto % UNIDAD_USDC).toString().padStart(DECIMALES_USDC, '0').slice(0, 2);
+  if (monto > 0n && monto < 100_000n) {
+    // Menos de un centavo: mostrar decimales significativos en vez de "0,00".
+    const fino = (Number(monto) / Number(UNIDAD_USDC)).toFixed(DECIMALES_USDC).replace(/0+$/, '').replace(/\.$/, '');
+    return `${fino.replace('.', ',')} USDC`;
+  }
+  const centavos = (monto + 50_000n) / 100_000n; // redondeo a centavos, no truncado
+  const entero = centavos / 100n;
+  const decimales = (centavos % 100n).toString().padStart(2, '0');
   return `${entero.toLocaleString('es-AR')},${decimales} USDC`;
 }

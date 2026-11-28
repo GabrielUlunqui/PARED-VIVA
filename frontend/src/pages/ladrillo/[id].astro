@@ -42,7 +42,7 @@ if (!campania) Astro.response.status = 404;
 Astro.response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
 ---
 
-<Base titulo={`Ladrillo #${Astro.params.id}`}>
+<Base titulo={`Ladrillo #${Astro.params.id}`} descripcion={ladrillo ? `El recuerdo del ladrillo #${id} en la pared del barrio` : `El ladrillo #${id} todavía está libre: adoptalo y dejá tu recuerdo`}>
   <div class="mx-auto max-w-6xl">
     {
       !campania ? (

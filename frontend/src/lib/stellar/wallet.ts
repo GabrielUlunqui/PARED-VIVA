@@ -68,6 +68,11 @@ export function desconectar(): void {
   localStorage.removeItem(CLAVE_CONECTADA);
 }
 
+/** Marca la billetera del navegador (creada o importada) como conectada, sin pipeline de fondeo. */
+export function marcarPruebaConectada(): void {
+  localStorage.setItem(CLAVE_CONECTADA, CONECTADA_PRUEBA);
+}
+
 export async function direccionActual(): Promise<string | null> {
   const tipo = tipoConectada();
   if (tipo === 'prueba') return walletPrueba()!.publicKey();

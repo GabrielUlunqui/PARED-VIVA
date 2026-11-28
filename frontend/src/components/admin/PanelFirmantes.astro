@@ -51,6 +51,9 @@
     <p class="m-0 mt-2 text-sm text-white/60">
       Para cambiar un firmante hace falta que aprueben otros 2 firmantes actuales de la campaña, y el servidor tiene que tener la clave de esos 2.
     </p>
+    <p class="m-0 mt-2 rounded-md border border-junta p-2 text-sm text-white/70" data-aviso-vieja hidden>
+      Esta campaña usa una versión anterior del contrato y no permite cambiar firmantes. Las campañas nuevas creadas desde el panel sí.
+    </p>
     <form data-form-rotar class="mt-4 grid gap-3" novalidate>
       <div class="grid gap-1">
         <label for="fr-campania" class="text-sm font-bold">Campaña</label>
@@ -93,6 +96,7 @@
     id: string;
     nombre: string;
     firmantes: string[];
+    permiteRotar?: boolean;
   }
 
   const $ = <T extends HTMLElement = HTMLElement>(sel: string): T => document.querySelector(sel) as T;
@@ -149,9 +153,26 @@
     actualizarSelects();
   }
 
-  function firmantesDeCampania(): string[] {
+  function campaniaSeleccionada(): Campania | undefined {
     const selCampania = $('[data-fr-campania]') as HTMLSelectElement;
-    return campanias.find((c) => c.id === selCampania.value)?.firmantes ?? [];
+    return campanias.find((c) => c.id === selCampania.value);
+  }
+
+  function firmantesDeCampania(): string[] {
+    return campaniaSeleccionada()?.firmantes ?? [];
+  }
+
+  // Las campañas con el contrato viejo no soportan rotar_firmante; si el campo falta, se asume vieja.
+  function actualizarBloqueoRotacion(): boolean {
+    const permite = campaniaSeleccionada()?.permiteRotar === true;
+    $('[data-aviso-vieja]').hidden = permite;
+    const form = $('[data-form-rotar]');
+    form.querySelectorAll('select, button').forEach((el) => {
+      if ((el as HTMLElement).hasAttribute('data-fr-campania')) return;
+      (el as HTMLButtonElement).disabled = !permite;
+    });
+    form.style.opacity = permite ? '' : '0.5';
+    return permite;
   }
 
   function actualizarSelects() {
@@ -176,6 +197,11 @@
   }
 
   function validarRotacion(): boolean {
+    if (!actualizarBloqueoRotacion()) {
+      $('[data-fr-error]').textContent = '';
+      ($('[data-fr-enviar]') as HTMLButtonElement).disabled = true;
+      return false;
+    }
     const saliente = ($('[data-fr-saliente]') as HTMLSelectElement).value;
     const nuevo = ($('[data-fr-nuevo]') as HTMLSelectElement).value;
     const a1 = ($('[data-fr-aprobador1]') as HTMLSelectElement).value;
@@ -194,8 +220,10 @@
 
   ['[data-fr-campania]', '[data-fr-saliente]', '[data-fr-nuevo]', '[data-fr-aprobador1]', '[data-fr-aprobador2]'].forEach((sel) => {
     $(sel).addEventListener('change', () => {
-      if (sel === '[data-fr-campania]') actualizarSelects();
-      else validarRotacion();
+      if (sel === '[data-fr-campania]') {
+        actualizarSelects();
+        actualizarBloqueoRotacion();
+      } else validarRotacion();
     });
   });
 

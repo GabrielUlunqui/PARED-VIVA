@@ -89,6 +89,7 @@
         <h3 class="m-0 text-2xl">Confirmá el despliegue</h3>
         <div data-resumen class="grid gap-1 text-sm"></div>
         <p class="m-0 text-sm text-white/60">Esto crea una campaña nueva en la red de prueba de Stellar y la anota en el registro. No se puede deshacer desde acá.</p>
+        <p class="m-0 rounded-md border border-ambar p-2 text-sm text-ambar" data-aviso-wasm hidden>La primera vez se sube la versión nueva del contrato a la red: tarda unos segundos más.</p>
         <div class="flex flex-wrap gap-3">
           <button type="button" class="boton-ladrillo presionable cursor-pointer rounded-md px-5 py-3 text-sm font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60" data-confirmar>Desplegar campaña</button>
           <button type="button" class="boton-neon presionable cursor-pointer rounded-md px-4 py-2 text-xs font-bold uppercase" data-cancelar>Volver</button>
@@ -133,6 +134,8 @@
   const erroresEl = $('[data-errores]');
   let conocidos: FirmanteConocido[] = [];
   let oficial: Campania | undefined;
+  let wasmInstalado = true;
+  let restauradorEstado = '';
 
   const entrada = (nombre: string) => form.querySelector<HTMLInputElement>(`[name="${nombre}"]`)!;
 
@@ -154,7 +157,8 @@
       const datos = await getJSON<{ activa: string; campanias: Campania[] }>('/api/admin/campanias');
       oficial = datos.campanias.find((c) => c.origen === 'config') ?? datos.campanias[0];
       // Restaurador por defecto: el de la campaña oficial, si el estado lo trae.
-      const restauradorOficial = (oficial as unknown as Record<string, unknown>)?.restaurador ?? oficial?.estado?.restaurador;
+      const restauradorOficial =
+        restauradorEstado || ((oficial as unknown as Record<string, unknown>)?.restaurador as string) || (oficial?.estado?.restaurador as string);
       if (typeof restauradorOficial === 'string' && esDireccionValida(restauradorOficial) && !entrada('restaurador').value) {
         entrada('restaurador').value = restauradorOficial;
         validar();
@@ -332,6 +336,8 @@
       p.querySelector('span')!.textContent = v;
       resumen.appendChild(p);
     });
+    const avisoWasm = $('[data-aviso-wasm]');
+    avisoWasm.hidden = wasmInstalado;
     $('[data-confirmacion]').hidden = false;
     form.hidden = true;
     $('[data-confirmacion]').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -398,6 +404,16 @@
 
   function inicializar() {
     cargar();
+    getJSON<{ wasmInstalado?: boolean; restaurador?: string }>('/api/admin/estado')
+      .then((d) => {
+        wasmInstalado = d.wasmInstalado !== false;
+        if (typeof d.restaurador === 'string') restauradorEstado = d.restaurador;
+        if (restauradorEstado && esDireccionValida(restauradorEstado) && !entrada('restaurador').value) {
+          entrada('restaurador').value = restauradorEstado;
+          validar();
+        }
+      })
+      .catch(() => {});
     getJSON<{ firmantes: FirmanteConocido[] }>('/api/admin/firmantes')
       .then((d) => {
         conocidos = d.firmantes ?? [];

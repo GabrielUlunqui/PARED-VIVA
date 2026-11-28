@@ -33,7 +33,7 @@ pub fn config(env: &Env, token: Address) -> Config {
         hitos: vec![env, 400 * USDC, 300 * USDC, 300 * USDC],
         filas: 20,
         columnas: 30,
-        aporte_minimo: USDC,
+        aporte_minimo: 2 * USDC,
     }
 }
 

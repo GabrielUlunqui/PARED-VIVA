@@ -2,7 +2,11 @@ export const RED = {
   rpcUrl: 'https://soroban-testnet.stellar.org',
   passphrase: 'Test SDF Network ; September 2015',
   explorador: 'https://stellar.expert/explorer/testnet',
+  friendbot: 'https://friendbot.stellar.org',
 };
+
+// Asset clásico detrás del SAC `usdc` (emitido por `admin`).
+export const ASSET_USDC = { codigo: 'USDC', emisor: 'GBT3IVJYJWNZ5QX4TIFUQT5Z4KD4DOJMLWEVX4THRWUYAAKZSBZNKDZY' };
 
 // PUBLIC_CAMPANIA=ensayo usa una campaña de prueba (meta 10 USDC) para ensayar Freighter e IPFS sin tocar la oficial.
 const IDS = {

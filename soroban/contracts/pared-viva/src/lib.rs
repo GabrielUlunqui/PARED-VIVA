@@ -1,5 +1,6 @@
 #![no_std]
 
+mod admin;
 mod almacen;
 mod constructor;
 mod donar;
@@ -15,7 +16,7 @@ mod test;
 pub use eventos::{Donacion, HitoAprobado, HitoPagado, Reembolso};
 pub use tipos::{Clave, Config, Error, Estado, Ladrillo, Resumen};
 
-use soroban_sdk::{contract, contractimpl, Address, Env, String, Vec};
+use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, String, Vec};
 
 #[contract]
 pub struct ParedViva;
@@ -69,5 +70,21 @@ impl ParedViva {
 
     pub fn es_guardian(env: Env, direccion: Address) -> bool {
         lecturas::es_guardian(&env, direccion)
+    }
+
+    pub fn ladrillos_pagina(env: Env, desde: u32, limite: u32) -> Vec<Ladrillo> {
+        lecturas::ladrillos_pagina(&env, desde, limite)
+    }
+
+    pub fn total_ocupados(env: Env) -> u32 {
+        lecturas::total_ocupados(&env)
+    }
+
+    pub fn rotar_firmante(env: Env, aprobador1: Address, aprobador2: Address, saliente: Address, nuevo: Address) -> Result<(), Error> {
+        admin::rotar_firmante(&env, aprobador1, aprobador2, saliente, nuevo)
+    }
+
+    pub fn upgrade(env: Env, hash: BytesN<32>) {
+        admin::upgrade(&env, hash)
     }
 }

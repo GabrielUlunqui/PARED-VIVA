@@ -19,7 +19,7 @@ const ERRORES_TOKEN: Record<number, string> = {
 export type TipoErrorWallet = 'sin-freighter' | 'rechazado' | 'red-equivocada' | 'sin-conexion' | 'desconocido';
 
 const MENSAJES_WALLET: Record<TipoErrorWallet, string> = {
-  'sin-freighter': 'No encontramos Freighter. Instalá la extensión desde freighter.app y recargá la página.',
+  'sin-freighter': 'No encontramos Freighter. Instalala desde freighter.app o creá una wallet de prueba desde «Conectar wallet».',
   rechazado: 'Cancelaste la solicitud en Freighter.',
   'red-equivocada': 'Freighter está en otra red. Cambiala a Testnet y probá de nuevo.',
   'sin-conexion': 'Primero conectá tu wallet.',
@@ -62,7 +62,7 @@ export function traducirError(e: unknown): string {
   const codigo = Number(mensaje.match(/Error\(Contract, #(\d+)\)/)?.[1]);
   if (ERRORES_CONTRATO[codigo]) return ERRORES_CONTRATO[codigo];
   if (ERRORES_TOKEN[codigo]) return ERRORES_TOKEN[codigo];
-  if (/account not found/i.test(mensaje)) return 'Tu cuenta no existe en Testnet. Fondeala con Friendbot desde Freighter.';
+  if (/account not found/i.test(mensaje)) return 'Tu cuenta no existe en Testnet. Fondeala con Friendbot desde el panel de tu wallet.';
   if (/insufficient.?balance|tx_insufficient_fee/i.test(mensaje)) return 'No tenés XLM suficiente para pagar la comisión.';
   if (/Falta el ID del contrato/.test(mensaje)) return 'El contrato todavía no está desplegado.';
   console.error(e);

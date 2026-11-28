@@ -1,47 +1,311 @@
 <div class="wallet" id="wallet">
-  <button id="conectar-wallet" class="conectar-wallet" type="button">Conectar wallet</button>
+  <button
+    id="conectar-wallet"
+    class="conectar-wallet"
+    type="button"
+    aria-haspopup="dialog"
+    aria-expanded="false"
+    aria-controls="wallet-opciones"
+  >
+    Conectar wallet
+  </button>
+  <button
+    id="wallet-chip"
+    class="chip"
+    type="button"
+    aria-haspopup="dialog"
+    aria-expanded="false"
+    aria-controls="wallet-panel"
+    hidden
+  >
+    <span class="punto" aria-hidden="true"></span>
+    <span class="chip-textos">
+      <span class="chip-direccion" data-direccion-corta></span>
+      <span class="chip-saldo" data-chip-saldo>Cargando…</span>
+    </span>
+    <span class="flecha" aria-hidden="true">▾</span>
+  </button>
+
+  <div id="wallet-opciones" class="panel cartel" role="dialog" aria-label="Elegí una wallet" hidden>
+    <span class="etiqueta">Elegí una wallet</span>
+    <button type="button" class="opcion" data-opcion-freighter>
+      <strong>Freighter</strong>
+      <small>Extensión del navegador, en Testnet.</small>
+    </button>
+    <button type="button" class="opcion" data-opcion-prueba>
+      <strong data-prueba-titulo>Crear wallet de prueba</strong>
+      <small data-prueba-detalle></small>
+    </button>
+    <p class="nota" data-progreso role="status" hidden></p>
+  </div>
+
+  <div id="wallet-panel" class="panel cartel" role="dialog" aria-label="Tu wallet" hidden>
+    <div class="panel-cabecera">
+      <span class="etiqueta" data-tipo-wallet>Tu wallet · Testnet</span>
+      <button type="button" class="icono" data-refrescar title="Actualizar saldos" aria-label="Actualizar saldos">↻</button>
+    </div>
+
+    <div class="direccion">
+      <code data-direccion-completa></code>
+      <button type="button" class="copiar" data-copiar>Copiar</button>
+    </div>
+
+    <dl class="saldos">
+      <div class="saldo saldo-usdc">
+        <dt>USDC <small>para donar</small></dt>
+        <dd><span data-saldo-usdc>—</span></dd>
+      </div>
+      <div class="saldo saldo-xlm">
+        <dt>XLM <small>para comisiones</small></dt>
+        <dd><span data-saldo-xlm>—</span></dd>
+      </div>
+    </dl>
+
+    <p class="nota" data-nota hidden></p>
+    <button type="button" class="boton-ladrillo fondear" data-fondear hidden>Fondear con Friendbot</button>
+    <button type="button" class="boton-ladrillo fondear" data-pedir-usdc hidden></button>
+    <small class="pista" data-pista-prueba hidden>
+      La clave de esta wallet vive solo en este navegador. Usala únicamente para probar en testnet.
+    </small>
+
+    <div class="acciones">
+      <a data-explorador target="_blank" rel="noopener noreferrer">Ver en stellar.expert ↗</a>
+      <button type="button" class="desconectar" data-desconectar>Desconectar</button>
+    </div>
+  </div>
+
   <span id="wallet-aviso" class="aviso" role="status" hidden></span>
 </div>
 
 <script>
+  import { RED } from '../../contracts/config';
   import { emitir, escuchar } from '../../lib/eventos';
+  import { MONTO_GRIFO_USDC } from '../../lib/stellar/clasicas';
   import { traducirError } from '../../lib/stellar/errores';
-  import { abreviar, conectar, desconectar, direccionActual, observarCambios, redCorrecta } from '../../lib/stellar/wallet';
+  import { fondearConFriendbot, leerSaldos, type Saldos } from '../../lib/stellar/saldos';
+  import {
+    abreviar,
+    conectar,
+    conectarPrueba,
+    desconectar,
+    direccionActual,
+    observarCambios,
+    redCorrecta,
+    tipoConectada,
+    type TipoWallet,
+  } from '../../lib/stellar/wallet';
+  import { pedirUsdcPrueba, walletPrueba, type EtapaPrueba } from '../../lib/stellar/wallet-prueba';
+  import { formatearMonto, UNIDAD_USDC } from '../../lib/tipos';
 
+  const INTERVALO_SALDOS_MS = 30_000;
+  const USDC_BAJO = 10n * UNIDAD_USDC;
+  const TEXTO_PEDIR_USDC = `Pedir ${MONTO_GRIFO_USDC} USDC de prueba`;
+  const ETAPAS_PRUEBA: Record<EtapaPrueba, string> = {
+    fondeando: 'Creando la cuenta y fondeándola con XLM (Friendbot)…',
+    trustline: 'Habilitando USDC en la wallet…',
+    usdc: `Pidiendo ${MONTO_GRIFO_USDC} USDC de prueba…`,
+  };
+
+  const raiz = document.getElementById('wallet') as HTMLDivElement;
   const boton = document.getElementById('conectar-wallet') as HTMLButtonElement;
+  const chip = document.getElementById('wallet-chip') as HTMLButtonElement;
+  const panel = document.getElementById('wallet-panel') as HTMLDivElement;
+  const opciones = document.getElementById('wallet-opciones') as HTMLDivElement;
   const aviso = document.getElementById('wallet-aviso') as HTMLSpanElement;
-  let direccion: string | null = null;
+  const $ = <T extends HTMLElement>(sel: string) => raiz.querySelector(sel) as T;
+  const refrescar = $<HTMLButtonElement>('[data-refrescar]');
+  const copiar = $<HTMLButtonElement>('[data-copiar]');
+  const fondear = $<HTMLButtonElement>('[data-fondear]');
+  const pedirUsdc = $<HTMLButtonElement>('[data-pedir-usdc]');
+  const nota = $<HTMLParagraphElement>('[data-nota]');
+  const progreso = $<HTMLParagraphElement>('[data-progreso]');
+  const opcionFreighter = $<HTMLButtonElement>('[data-opcion-freighter]');
+  const opcionPrueba = $<HTMLButtonElement>('[data-opcion-prueba]');
 
-  function mostrarAviso(texto: string | null) {
-    aviso.hidden = !texto;
-    aviso.textContent = texto ?? '';
+  let direccion: string | null = null;
+  let tipo: TipoWallet | null = null;
+  let saldos: Saldos | null = null;
+  let errorSaldos = false;
+
+  pedirUsdc.textContent = TEXTO_PEDIR_USDC;
+
+  function mostrarTexto(el: HTMLElement, texto: string | null) {
+    el.hidden = !texto;
+    el.textContent = texto ?? '';
+  }
+  const mostrarAviso = (texto: string | null) => mostrarTexto(aviso, texto);
+  const mostrarNota = (texto: string | null) => mostrarTexto(nota, texto);
+
+  function pintarSaldos() {
+    const chipSaldo = $('[data-chip-saldo]');
+    const usdc = $('[data-saldo-usdc]');
+    const xlm = $('[data-saldo-xlm]');
+    fondear.hidden = true;
+    pedirUsdc.hidden = true;
+    if (!saldos) {
+      chipSaldo.textContent = errorSaldos ? 'Saldo no disponible' : 'Cargando…';
+      usdc.textContent = xlm.textContent = '—';
+      mostrarNota(errorSaldos ? 'No se pudieron leer los saldos. Probá actualizar.' : null);
+      return;
+    }
+    const { xlm: enXlm, usdc: enUsdc } = saldos;
+    usdc.textContent = enUsdc === null ? '—' : formatearMonto(enUsdc, '');
+    xlm.textContent = enXlm === null ? '—' : formatearMonto(enXlm, '');
+    if (enXlm === null) {
+      chipSaldo.textContent = 'Sin fondear';
+      fondear.hidden = false;
+      mostrarNota('Esta cuenta todavía no existe en testnet. Fondeala con XLM de prueba para empezar.');
+      return;
+    }
+    chipSaldo.textContent = `${formatearMonto(enUsdc ?? 0n, 'USDC')} · ${formatearMonto(enXlm, 'XLM', 0)}`;
+    pedirUsdc.hidden = !(tipo === 'prueba' && enUsdc !== null && enUsdc < USDC_BAJO);
+    if (enUsdc !== null) return mostrarNota(null);
+    mostrarNota(
+      tipo === 'prueba'
+        ? 'Falta habilitar USDC. Desconectá y elegí «Usar mi wallet de prueba» para terminar la configuración.'
+        : 'Tu wallet todavía no acepta USDC. En Freighter tocá «+ Add token» y agregá el USDC de la app.',
+    );
+  }
+
+  async function refrescarSaldos() {
+    const objetivo = direccion;
+    if (!objetivo) return;
+    refrescar.classList.add('girando');
+    try {
+      const nuevos = await leerSaldos(objetivo);
+      if (objetivo !== direccion) return;
+      saldos = nuevos;
+      errorSaldos = false;
+    } catch {
+      if (objetivo !== direccion) return;
+      errorSaldos = true;
+    } finally {
+      refrescar.classList.remove('girando');
+    }
+    pintarSaldos();
+  }
+
+  function abrir(cual: HTMLElement | null) {
+    panel.hidden = cual !== panel;
+    opciones.hidden = cual !== opciones;
+    chip.setAttribute('aria-expanded', String(cual === panel));
+    boton.setAttribute('aria-expanded', String(cual === opciones));
+    if (cual === panel) refrescarSaldos();
+    if (cual === opciones) {
+      const existente = !!walletPrueba();
+      $('[data-prueba-titulo]').textContent = existente ? 'Usar mi wallet de prueba' : 'Crear wallet de prueba';
+      $('[data-prueba-detalle]').textContent = existente
+        ? 'La que ya creaste en este navegador.'
+        : `Sin instalar nada: se guarda en este navegador y recibe XLM y ${MONTO_GRIFO_USDC} USDC de testnet.`;
+    }
   }
 
   function actualizar(nueva: string | null, redOk = true, notificar = true) {
-    const cambio = notificar && nueva !== direccion;
+    const cambio = nueva !== direccion;
     direccion = nueva;
-    boton.textContent = direccion ? abreviar(direccion) : 'Conectar wallet';
-    boton.title = direccion ? `${direccion}\nClic para desconectar` : '';
-    boton.classList.toggle('conectada', !!direccion);
+    tipo = direccion ? tipoConectada() : null;
+    boton.hidden = !!direccion;
+    chip.hidden = !direccion;
+    $('[data-pista-prueba]').hidden = tipo !== 'prueba';
+    if (direccion) {
+      $('[data-direccion-corta]').textContent = abreviar(direccion);
+      $('[data-direccion-completa]').textContent = direccion;
+      $('[data-tipo-wallet]').textContent = tipo === 'prueba' ? 'Wallet de prueba · Testnet' : 'Freighter · Testnet';
+      $<HTMLAnchorElement>('[data-explorador]').href = `${RED.explorador}/account/${direccion}`;
+      chip.title = direccion;
+    } else {
+      abrir(null);
+    }
     mostrarAviso(direccion && !redOk ? 'Cambiá Freighter a Testnet' : null);
-    if (cambio) emitir('pv:wallet-cambiada', { direccion });
+    if (!cambio) return;
+    saldos = null;
+    errorSaldos = false;
+    pintarSaldos();
+    refrescarSaldos();
+    if (notificar) emitir('pv:wallet-cambiada', { direccion });
   }
 
-  boton.addEventListener('click', async () => {
-    if (direccion) {
-      desconectar();
-      actualizar(null);
-      return;
-    }
-    boton.disabled = true;
+  async function conectarCon(accion: () => Promise<void>) {
+    opcionFreighter.disabled = opcionPrueba.disabled = true;
+    mostrarAviso(null);
     try {
-      actualizar(await conectar());
+      await accion();
     } catch (e) {
+      mostrarTexto(progreso, null);
       mostrarAviso(traducirError(e));
     } finally {
-      boton.disabled = false;
+      opcionFreighter.disabled = opcionPrueba.disabled = false;
     }
+  }
+
+  boton.addEventListener('click', () => abrir(opciones.hidden ? opciones : null));
+  chip.addEventListener('click', () => abrir(panel.hidden ? panel : null));
+  refrescar.addEventListener('click', refrescarSaldos);
+
+  opcionFreighter.addEventListener('click', () =>
+    conectarCon(async () => {
+      actualizar(await conectar());
+    }),
+  );
+
+  opcionPrueba.addEventListener('click', () =>
+    conectarCon(async () => {
+      const { direccion: nueva, avisoUsdc } = await conectarPrueba((etapa) =>
+        mostrarTexto(progreso, ETAPAS_PRUEBA[etapa]),
+      );
+      mostrarTexto(progreso, null);
+      actualizar(nueva);
+      abrir(panel);
+      if (avisoUsdc) mostrarNota(avisoUsdc);
+    }),
+  );
+
+  $('[data-desconectar]').addEventListener('click', () => {
+    desconectar();
+    actualizar(null);
   });
+
+  copiar.addEventListener('click', async () => {
+    if (!direccion) return;
+    await navigator.clipboard.writeText(direccion);
+    copiar.textContent = '¡Copiada!';
+    setTimeout(() => (copiar.textContent = 'Copiar'), 1500);
+  });
+
+  async function accionDelPanel(el: HTMLButtonElement, enCurso: string, accion: (d: string) => Promise<void>) {
+    if (!direccion) return;
+    const texto = el.textContent;
+    el.disabled = true;
+    el.textContent = enCurso;
+    try {
+      await accion(direccion);
+      await refrescarSaldos();
+    } catch (e) {
+      mostrarNota(traducirError(e));
+    } finally {
+      el.disabled = false;
+      el.textContent = texto;
+    }
+  }
+
+  fondear.addEventListener('click', () => accionDelPanel(fondear, 'Fondeando…', fondearConFriendbot));
+  pedirUsdc.addEventListener('click', () => accionDelPanel(pedirUsdc, 'Pidiendo USDC…', pedirUsdcPrueba));
+
+  document.addEventListener('click', (e) => {
+    if (!raiz.contains(e.target as Node)) abrir(null);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || (panel.hidden && opciones.hidden)) return;
+    const foco = panel.hidden ? boton : chip;
+    abrir(null);
+    foco.focus();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refrescarSaldos();
+  });
+  setInterval(() => {
+    if (!document.hidden) refrescarSaldos();
+  }, INTERVALO_SALDOS_MS);
 
   async function iniciar() {
     const guardada = await direccionActual();
@@ -50,6 +314,7 @@
     escuchar('pv:wallet-cambiada', ({ direccion: otra }) => {
       if (otra !== direccion) actualizar(otra, true, false);
     });
+    escuchar('pv:donacion-confirmada', () => refrescarSaldos());
   }
 
   iniciar().catch(() => actualizar(null));
@@ -57,6 +322,7 @@
 
 <style>
   .wallet {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -71,19 +337,250 @@
     font: inherit;
     cursor: pointer;
   }
-  .conectar-wallet.conectada {
-    background: transparent;
-    color: var(--color-secundario);
-    font-family: ui-monospace, monospace;
-  }
   .conectar-wallet:disabled {
     opacity: 0.6;
     cursor: wait;
   }
+  .conectar-wallet[hidden],
+  .chip[hidden],
+  .panel[hidden],
+  .nota[hidden],
+  .fondear[hidden],
+  .pista[hidden] {
+    display: none;
+  }
+
+  .chip {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0.75rem;
+    background: var(--color-muro);
+    border: 2px solid var(--color-junta);
+    color: var(--color-texto);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .chip:hover,
+  .chip[aria-expanded='true'] {
+    border-color: var(--color-celeste);
+    box-shadow: 0 0 14px -4px var(--color-celeste);
+  }
+  .punto {
+    width: 0.55rem;
+    height: 0.55rem;
+    flex: none;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 8px #4ade80;
+  }
+  .chip-textos {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+  .chip-direccion {
+    font-family: ui-monospace, 'Cascadia Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--color-tenue);
+  }
+  .chip-saldo {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-ambar);
+    white-space: nowrap;
+  }
+  .flecha {
+    font-size: 0.7rem;
+    color: var(--color-tenue);
+    transition: transform 0.2s;
+  }
+  .chip[aria-expanded='true'] .flecha {
+    transform: rotate(180deg);
+  }
+
+  .panel {
+    position: absolute;
+    top: calc(100% + 0.6rem);
+    right: 0;
+    z-index: 60;
+    width: min(320px, calc(100vw - 1.5rem));
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: 2rem 1.1rem 1.1rem;
+  }
+  .panel-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .icono {
+    background: none;
+    border: none;
+    color: var(--color-tenue);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .icono:hover {
+    color: var(--color-texto);
+  }
+  .icono.girando {
+    animation: girar 0.8s linear infinite;
+  }
+  @keyframes girar {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .direccion {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: var(--color-noche);
+    border: 1px solid var(--color-junta);
+  }
+  .direccion code {
+    flex: 1;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: var(--color-texto);
+  }
+  .copiar,
+  .desconectar {
+    background: none;
+    border: 1px solid var(--color-junta);
+    color: var(--color-tenue);
+    font: inherit;
+    font-size: 0.72rem;
+    padding: 0.15rem 0.5rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .copiar:hover,
+  .desconectar:hover {
+    color: var(--color-texto);
+    border-color: var(--color-texto);
+  }
+
+  .saldos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    margin: 0;
+  }
+  .saldo {
+    padding: 0.6rem 0.7rem;
+    background: var(--color-muro);
+    border: 2px solid var(--color-junta);
+    border-top-width: 4px;
+  }
+  .saldo-usdc {
+    border-top-color: var(--color-ambar);
+  }
+  .saldo-xlm {
+    border-top-color: var(--color-celeste);
+  }
+  .saldo dt {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
+  .saldo dt small {
+    display: block;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--color-tenue);
+  }
+  .saldo dd {
+    margin: 0.35rem 0 0;
+    font-family: var(--fuente-titulos);
+    font-size: 1.75rem;
+    line-height: 1;
+    overflow-wrap: anywhere;
+  }
+  .saldo-usdc dd {
+    color: var(--color-ambar);
+  }
+  .saldo-xlm dd {
+    color: var(--color-celeste);
+  }
+
+  .nota {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-ambar);
+  }
+  .fondear {
+    padding: 0.55rem 1rem;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .fondear:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
+  .opcion {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.7rem 0.8rem;
+    background: var(--color-muro);
+    border: 2px solid var(--color-junta);
+    color: var(--color-texto);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .opcion:hover:not(:disabled) {
+    border-color: var(--color-rosa);
+    box-shadow: 0 0 14px -4px var(--color-rosa);
+  }
+  .opcion:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+  .opcion small {
+    font-size: 0.78rem;
+    color: var(--color-tenue);
+  }
+  .pista {
+    font-size: 0.72rem;
+    color: var(--color-tenue);
+  }
+
+  .acciones {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgb(255 255 255 / 0.08);
+    font-size: 0.8rem;
+  }
+
   .aviso {
     font-size: 0.8rem;
     color: var(--color-primario);
     max-width: 260px;
     text-align: right;
+  }
+
+  @media (max-width: 400px) {
+    .chip {
+      padding: 0.3rem 0.55rem;
+      gap: 0.45rem;
+    }
+    .chip-saldo {
+      font-size: 0.75rem;
+    }
   }
 </style>

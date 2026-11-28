@@ -9,6 +9,7 @@ export default defineConfig({
   env: {
     schema: {
       PINATA_JWT: envField.string({ context: 'server', access: 'secret', optional: true }),
+      GRIFO_SECRETO: envField.string({ context: 'server', access: 'secret', optional: true }),
     },
   },
   vite: {

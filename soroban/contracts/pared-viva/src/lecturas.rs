@@ -32,6 +32,30 @@ pub fn ladrillos(env: &Env) -> Vec<Ladrillo> {
     lista
 }
 
+pub const LIMITE_PAGINA: u32 = 50;
+
+/// Lee solo `limite` ladrillos ocupados a partir del indice `desde` del orden de donacion.
+pub fn ladrillos_pagina(env: &Env, desde: u32, limite: u32) -> Vec<Ladrillo> {
+    let ocupados = almacen::ocupados(env);
+    let mut lista = Vec::new(env);
+    let limite = limite.min(LIMITE_PAGINA);
+    let hasta = desde.saturating_add(limite).min(ocupados.len());
+    let mut i = desde;
+    while i < hasta {
+        if let Some(id) = ocupados.get(i) {
+            if let Some(l) = ladrillo(env, id) {
+                lista.push_back(l);
+            }
+        }
+        i += 1;
+    }
+    lista
+}
+
+pub fn total_ocupados(env: &Env) -> u32 {
+    almacen::ocupados(env).len()
+}
+
 pub fn aporte(env: &Env, donante: Address) -> i128 {
     almacen::leer(env, &Clave::Aporte(donante)).unwrap_or(0)
 }

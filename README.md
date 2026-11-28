@@ -362,7 +362,10 @@ Cada contrato tiene `src/test.rs` con tests del entorno de host (`cargo test`). 
 ```env
 PUBLIC_USAR_MOCK=false    # false = leer el contrato real de testnet
 PINATA_JWT=...            # solo servidor, sin prefijo PUBLIC_
+GRIFO_SECRETO=S...        # solo servidor: `stellar keys show grifo`, para /api/grifo
 ```
+
+**Wallet de prueba (sin Freighter):** en «Conectar wallet» → «Crear wallet de prueba» la página genera una cuenta en el navegador (la clave queda en `localStorage`), la fondea con Friendbot, agrega la trustline USDC y pide 100 USDC a `/api/grifo`. El grifo transfiere desde la identidad `grifo` (no es el admin; solo tiene USDC de stock) y solo da USDC si la wallet tiene menos de 10, con un máximo de 3 pedidos por IP por hora. Para recargar el stock: `./scripts/fondear.sh grifo 100000` desde `soroban/`.
 
 La red RPC, el network passphrase y los IDs de los contratos no se leen desde `.env`: están versionados en `frontend/src/contracts/config.ts`. Si se redespliega, `soroban/scripts/desplegar.sh` actualiza ese archivo y hay que revisar/commitear el cambio.
 

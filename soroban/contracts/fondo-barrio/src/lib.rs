@@ -12,6 +12,11 @@ const DIA_EN_LEDGERS: u32 = 17_280;
 const TTL_UMBRAL: u32 = 30 * DIA_EN_LEDGERS;
 const TTL_EXTENSION: u32 = 60 * DIA_EN_LEDGERS;
 const BPS_TOTAL: u32 = 10_000;
+// Gobernanza de rondas: quorum minimo de votos y ventana minima antes de cerrar.
+// Para produccion conviene subirlos o pasarlos por constructor (~1 dia = 17.280 ledgers).
+const VOTOS_MINIMOS: u32 = 2;
+const LEDGERS_MINIMOS_RONDA: u32 = 120; // ~10 minutos a 5 s por ledger
+const LIMITE_PAGINA: u32 = 50;
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -42,6 +47,7 @@ enum Clave {
     ContadorPropuestas,
     Propuesta(u32),
     PropuestasRonda(u32),
+    InicioRonda,
     Voto(u32, Address),
 }
 
@@ -56,6 +62,8 @@ pub enum Error {
     YaVoto = 5,
     SinPropuestas = 6,
     FondoInsuficiente = 7,
+    RondaAbierta = 8,
+    SinQuorum = 9,
 }
 
 #[contractclient(name = "CampaniaClient")]
@@ -137,6 +145,9 @@ impl FondoBarrio {
         env.storage()
             .instance()
             .set(&Clave::ContadorPropuestas, &0u32);
+        env.storage()
+            .instance()
+            .set(&Clave::InicioRonda, &env.ledger().sequence());
         extender_instancia(&env);
     }
 
@@ -246,6 +257,14 @@ impl FondoBarrio {
         if ids.is_empty() {
             return Err(Error::SinPropuestas);
         }
+        let inicio: u32 = env
+            .storage()
+            .instance()
+            .get(&Clave::InicioRonda)
+            .unwrap_or(0);
+        if env.ledger().sequence() < inicio + LEDGERS_MINIMOS_RONDA {
+            return Err(Error::RondaAbierta);
+        }
 
         let mut ganadora: Option<Propuesta> = None;
         for id in ids.iter() {
@@ -260,6 +279,9 @@ impl FondoBarrio {
             }
         }
         let ganadora = ganadora.ok_or(Error::SinPropuestas)?;
+        if ganadora.votos < VOTOS_MINIMOS {
+            return Err(Error::SinQuorum);
+        }
 
         let contrato = env.current_contract_address();
         let token = token_client(&env, &config);
@@ -274,6 +296,13 @@ impl FondoBarrio {
         env.storage()
             .instance()
             .set(&Clave::RondaActual, &(ronda_actual + 1));
+        env.storage()
+            .instance()
+            .set(&Clave::InicioRonda, &env.ledger().sequence());
+        env.events().publish(
+            (soroban_sdk::symbol_short!("ronda_fin"), ronda_actual),
+            (ganadora.id, ganadora.guardian.clone(), ganadora.monto),
+        );
         extender_instancia(&env);
         Ok(ganadora.id)
     }
@@ -294,6 +323,24 @@ impl FondoBarrio {
             if let Some(propuesta) = leer::<Propuesta>(&env, &Clave::Propuesta(id)) {
                 salida.push_back(propuesta);
             }
+        }
+        salida
+    }
+
+    pub fn propuestas_pagina(env: Env, ronda: u32, desde: u32, limite: u32) -> Vec<Propuesta> {
+        let ids: Vec<u32> =
+            leer(&env, &Clave::PropuestasRonda(ronda)).unwrap_or_else(|| Vec::new(&env));
+        let mut salida = Vec::new(&env);
+        let limite = limite.min(LIMITE_PAGINA);
+        let hasta = desde.saturating_add(limite).min(ids.len());
+        let mut i = desde;
+        while i < hasta {
+            if let Some(id) = ids.get(i) {
+                if let Some(propuesta) = leer::<Propuesta>(&env, &Clave::Propuesta(id)) {
+                    salida.push_back(propuesta);
+                }
+            }
+            i += 1;
         }
         salida
     }

@@ -21,6 +21,9 @@ pub fn donar(env: &Env, donante: Address, ladrillo_id: u32, recuerdo_cid: String
     if monto < config.aporte_minimo {
         return Err(Error::MontoInsuficiente);
     }
+    if recuerdo_cid.len() == 0 || recuerdo_cid.len() > 128 {
+        return Err(Error::RecuerdoInvalido);
+    }
 
     almacen::token(env, &config).transfer(&donante, &env.current_contract_address(), &monto);
 

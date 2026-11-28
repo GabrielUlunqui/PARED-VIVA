@@ -77,4 +77,6 @@ pub enum Error {
     NoReembolsable = 8,
     SinAporte = 9,
     MontoInsuficiente = 20,
+    RecuerdoInvalido = 21,
+    NoEsAprobador = 22,
 }

@@ -240,15 +240,8 @@ const MONTO_INICIAL = '5';
     [montoInput, texto, imagen, consentimiento].forEach((c) => marcarCampo(c, false));
   }
 
-  function aplicarMinimo() {
-    sugeridos.forEach((b) => (b.hidden = parsearUsdc(b.dataset.monto!)! < minimo));
-    const inicial = montoActual();
-    if (inicial === null || inicial < minimo) montoInput.value = usdcATexto(minimo);
-  }
-
   function reiniciar() {
     form.reset();
-    aplicarMinimo();
     form.hidden = false;
     exito.hidden = true;
     exito.classList.remove('aparecer');

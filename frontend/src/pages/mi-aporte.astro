@@ -15,7 +15,7 @@ import Boton from '../components/ui/Boton.astro';
     <PanelPrueba />
 
     <section data-sin-wallet hidden>
-      <div class="cartel mt-6 text-center">
+      <div class="cartel mt-6 rounded-xl text-center" data-revelar>
         <p class="m-0 text-white/70">Todavía no conectaste tu billetera.</p>
         <Boton type="button" class="mt-4" data-conectar>Conectar mi billetera</Boton>
       </div>
@@ -23,24 +23,24 @@ import Boton from '../components/ui/Boton.astro';
 
     <section data-contenido hidden>
       <div class="cifras mt-6 grid gap-4 sm:grid-cols-3" aria-busy="true">
-        <div class="cartel !p-4" data-caja-total>
+        <div class="cartel rounded-xl !p-4" data-caja-total>
           <p class="etiqueta m-0">Total aportado</p>
-          <p class="m-0 mt-1 font-display text-3xl text-ambar" data-total><span class="cargando-cifra inline-block h-6 w-24 animate-pulse bg-white/10"></span></p>
+          <p class="m-0 mt-1 font-display text-3xl text-ambar" data-total><span class="skeleton inline-block h-6 w-24 rounded-md"></span></p>
         </div>
-        <div class="cartel !p-4">
+        <div class="cartel rounded-xl !p-4">
           <p class="etiqueta m-0">Ladrillos adoptados</p>
-          <p class="m-0 mt-1 font-display text-3xl text-ambar" data-cantidad><span class="inline-block h-6 w-12 animate-pulse bg-white/10"></span></p>
+          <p class="m-0 mt-1 font-display text-3xl text-ambar" data-cantidad><span class="skeleton inline-block h-6 w-12 rounded-md"></span></p>
         </div>
-        <div class="cartel !p-4">
+        <div class="cartel rounded-xl !p-4">
           <p class="etiqueta m-0">Guardián del mural</p>
-          <p class="m-0 mt-1 font-display text-3xl text-ambar" data-guardian><span class="inline-block h-6 w-12 animate-pulse bg-white/10"></span></p>
+          <p class="m-0 mt-1 font-display text-3xl text-ambar" data-guardian><span class="skeleton inline-block h-6 w-12 rounded-md"></span></p>
           <p class="m-0 mt-1 text-sm text-white/60" data-guardian-detalle hidden>
             Los guardianes cuidan la memoria del mural y ayudan a elegir la próxima pared. <a href="/guardianes" class="text-ambar">Conocé más</a>
           </p>
         </div>
       </div>
 
-      <div class="cartel mt-6 border-l-4 !border-l-rosa" data-reembolso hidden>
+      <div class="cartel mt-6 rounded-xl border-l-4 !border-l-rosa" data-reembolso hidden>
         <p class="m-0 text-white/80">La campaña no alcanzó la meta antes de la fecha límite. Podés recuperar todo lo que aportaste.</p>
         <Boton type="button" class="mt-4" data-reembolsar>Recuperar mi aporte</Boton>
       </div>
@@ -50,7 +50,7 @@ import Boton from '../components/ui/Boton.astro';
 
       <h2 class="m-0 mt-8">Mis ladrillos</h2>
       <ul class="ladrillos mt-3 text-white/80" data-ladrillos>
-        <li class="animate-pulse text-white/40">Cargando tus aportes…</li>
+        <li class="skeleton h-5 w-64 list-none rounded-md"></li>
       </ul>
     </section>
 
@@ -98,9 +98,9 @@ import Boton from '../components/ui/Boton.astro';
       botonReembolsar.textContent = `Recuperar ${formatearUsdc(aporte.total)}`;
       $('[data-ladrillos]').innerHTML = aporte.ladrillos.length
         ? aporte.ladrillos
-            .map((l) => `<li><a href="/ladrillo/${l.id}" class="text-ambar">Ladrillo #${l.id}</a> · ${formatearUsdc(l.monto)} · ${formatearFecha(l.fecha)}</li>`)
+            .map((l, i) => `<li data-revelar style="transition-delay: ${Math.min(i * 70, 560)}ms"><a href="/ladrillo/${l.id}" class="text-ambar">Ladrillo #${l.id}</a> · ${formatearUsdc(l.monto)} · ${formatearFecha(l.fecha)}</li>`)
             .join('')
-        : '<li class="text-white/60">Todavía no adoptaste ningún ladrillo. <a href="/" class="text-ambar">Adoptá uno en el mural</a>.</li>';
+        : '<li class="cartel list-none rounded-xl p-4 text-center text-white/70">Tu parte de la pared todavía está vacía.<br><a href="/#mural-seccion" class="boton-ladrillo mt-3 inline-block px-5 py-2 text-sm uppercase tracking-wider no-underline">Adoptá tu primer ladrillo</a></li>';
     } catch (e) {
       mostrar('[data-error]', traducirError(e));
     }

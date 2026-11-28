@@ -35,8 +35,8 @@ const bloques = [
 
   <ol class="m-0 mt-10 grid list-none gap-6 p-0 md:grid-cols-3">
     {
-      bloques.map((b) => (
-        <li class="cartel">
+      bloques.map((b, i) => (
+        <li class="cartel rounded-xl" data-revelar style={`transition-delay: ${i * 110}ms`}>
           <p class:list={['neon m-0 font-display text-6xl', b.color]}>{b.numero}</p>
           <h2 class="m-0 mt-2 text-2xl">{b.titulo}</h2>
           <p class="m-0 mt-2 text-white/70">{b.texto}</p>
@@ -45,13 +45,13 @@ const bloques = [
     }
   </ol>
 
-  <section class="cartel mt-10">
+  <section class="cartel mt-10 rounded-xl" data-revelar>
     <p class="etiqueta m-0">El fondo ya existe</p>
     <h2 class="m-0 mt-2 text-3xl">El fondo del barrio, <span class="neon text-ambar">on-chain</span></h2>
     <p class="m-0 mt-3 max-w-2xl text-white/70">
       El contrato del fondo de mantenimiento ya está desplegado en Stellar testnet y recibe el excedente de la campaña y el reparto de las láminas. Podés verlo y auditarlo en el explorador:
     </p>
-    <a href={urlFondo} target="_blank" rel="noopener" class="boton-neon mt-4 inline-block px-4 py-2 text-sm font-bold uppercase tracking-wider no-underline">
+    <a href={urlFondo} target="_blank" rel="noopener" class="boton-neon presionable mt-4 inline-block rounded-md px-4 py-2 text-sm font-bold uppercase tracking-wider no-underline">
       Ver el fondo en stellar.expert
     </a>
   </section>

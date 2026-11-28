@@ -42,14 +42,15 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-re
 
     {
       fallo ? (
-        <div class="cartel mt-10 text-center">
+        <div class="cartel mt-10 rounded-xl text-center">
           <p class="m-0 font-display text-4xl">No pudimos leer la pared</p>
           <p class="m-0 mt-2 text-white/60">Hubo un problema al conectar con la red. Probá recargar en unos segundos.</p>
           <a href="/archivo" class="boton-neon mt-6 inline-block px-4 py-2 text-sm font-bold uppercase no-underline">Reintentar</a>
         </div>
       ) : ladrillos.length === 0 ? (
-        <div class="cartel mt-10 text-center">
-          <p class="m-0 font-display text-4xl">La pared todavía está en silencio</p>
+        <div class="cartel mt-10 rounded-xl text-center">
+          <p class="m-0 font-display text-6xl" aria-hidden="true">🧱</p>
+          <p class="m-0 mt-2 font-display text-4xl">La pared todavía está en silencio</p>
           <p class="m-0 mt-2 text-white/60">Nadie dejó un recuerdo todavía. ¡El primero puede ser el tuyo!</p>
           <a href="/#mural-seccion" class="boton-ladrillo mt-6 inline-block px-6 py-3 text-sm uppercase tracking-wider no-underline">
             Adoptá tu ladrillo
@@ -58,7 +59,7 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-re
       ) : (
         <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {recuerdos.map(({ l, r }, i) => (
-            <a href={`/ladrillo/${l.id}`} class="block text-inherit no-underline transition hover:-translate-y-2">
+            <a href={`/ladrillo/${l.id}`} data-revelar style={`transition-delay: ${(i % 3) * 90}ms`} class="presionable block rounded-xl text-inherit no-underline">
               <Tarjeta class="flex flex-col">
                 {r?.imagenCid && (
                   <img src={urlGateway(r.imagenCid)} alt={`Foto del recuerdo de ${r.alias ?? 'un vecino'}, ladrillo #${l.id}`} loading="lazy" decoding="async" width="800" height="600" class="mb-4 aspect-[4/3] w-full border-2 border-junta object-cover" />

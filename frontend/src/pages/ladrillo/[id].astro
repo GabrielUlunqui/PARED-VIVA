@@ -56,7 +56,7 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-re
         </div>
       ) : (
         <div class="grid items-start gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-          <article class="cartel !px-6 !pb-8 !pt-10 md:!px-10">
+          <article class="cartel rounded-xl !px-6 !pb-8 !pt-10 md:!px-10" data-revelar>
             <p class="etiqueta m-0">
               Ladrillo #{id} · fila {fila + 1}, columna {columna + 1}
             </p>
@@ -90,7 +90,7 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-re
             )}
           </article>
 
-          <aside class="flex flex-col gap-6">
+          <aside class="flex flex-col gap-6" data-revelar style="transition-delay: 120ms">
             <div class="cartel !p-4 !pt-8">
               <p class="etiqueta m-0 mb-3">Su lugar en la pared</p>
               <div class="posicion relative w-full" style={`--x: ${columna}; --y: ${fila}; --columnas: ${columnas}; --filas: ${filas}`}>
@@ -109,6 +109,7 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-re
                   <dt class="etiqueta">Adoptado por</dt>
                   <dd class="m-0">
                     <a href={`${RED.explorador}/account/${ladrillo.donante}`} target="_blank" rel="noopener" class="text-ambar"><code>{acortarDireccion(ladrillo.donante)}</code></a>
+                    <button type="button" class="copiar-dato ml-2 cursor-pointer rounded-md border border-white/20 bg-transparent px-2 py-0.5 text-xs text-white/70 hover:border-ambar hover:text-ambar" data-copiar={ladrillo.donante} data-que="La dirección">Copiar</button>
                   </dd>
                 </div>
                 <details class="caja m-0 p-3 text-white/70">
@@ -118,6 +119,7 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-re
                     <a href={explorador} target="_blank" rel="noopener" class="text-ambar">Ver el contrato en el explorador</a>
                   </p>
                   <p class="m-0 mt-2 break-all text-sm text-white/50">Dirección completa: <code>{ladrillo.donante}</code></p>
+                  <button type="button" class="copiar-dato mt-2 cursor-pointer rounded-md border border-white/20 bg-transparent px-2 py-1 text-xs text-white/70 hover:border-ambar hover:text-ambar" data-copiar={ladrillo.recuerdoCid} data-que="El CID del recuerdo">Copiar CID</button>
                 </details>
               </dl>
             )}
@@ -132,6 +134,19 @@ Astro.response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-re
     }
   </div>
 </Base>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.copiar-dato').forEach((boton) => {
+    boton.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(boton.dataset.copiar ?? '');
+        window.dispatchEvent(new CustomEvent('pv:toast', { detail: { mensaje: `${boton.dataset.que} copiado al portapapeles`, tipo: 'exito' } }));
+      } catch {
+        window.dispatchEvent(new CustomEvent('pv:toast', { detail: { mensaje: 'No se pudo copiar', tipo: 'error' } }));
+      }
+    });
+  });
+</script>
 
 <style>
   .posicion .marca {

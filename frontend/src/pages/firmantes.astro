@@ -74,7 +74,7 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
     const puedeAprobar = esFirmante && c.estado === 'Financiada' && h.indice === c.hitoActual && !yaAprobe;
     const quienes = h.aprobadoPor.map((d) => (d === direccion ? 'vos' : abreviar(d))).join(', ');
     return `
-      <li class="hito ${h.estado.toLowerCase()}">
+      <li class="hito rounded-xl ${h.estado.toLowerCase()}" data-revelar style="transition-delay: ${h.indice * 100}ms">
         <div class="cabecera-hito">
           <strong>Hito ${h.indice + 1}</strong>
           <span>${formatearUsdc(h.monto)}</span>

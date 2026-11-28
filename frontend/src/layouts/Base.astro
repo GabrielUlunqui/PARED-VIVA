@@ -1,14 +1,20 @@
 ---
 import '../styles/global.css';
 import ConectarWallet from '../components/wallet/ConectarWallet.astro';
+import Toast from '../components/ui/Toast.astro';
 import { usandoEnsayo } from '../contracts/config';
 
 interface Props {
   titulo?: string;
+  descripcion?: string;
   completo?: boolean;
 }
 
-const { titulo, completo = false } = Astro.props;
+const {
+  titulo,
+  descripcion = 'Adoptá un ladrillo, dejá un recuerdo y ayudá a restaurar el mural del barrio.',
+  completo = false,
+} = Astro.props;
 const ruta = Astro.url.pathname.replace(/\/$/, '') || '/';
 const enlaces = [
   { href: '/', texto: 'Inicio' },
@@ -23,7 +29,7 @@ const enlaces = [
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Adoptá un ladrillo, dejá un recuerdo y ayudá a restaurar el mural del barrio." />
+    <meta name="description" content={descripcion} />
     <meta name="theme-color" content="#0a0812" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -39,17 +45,17 @@ const enlaces = [
       Demo en Stellar testnet: sin dinero real, sin inversión ni rendimiento.{usandoEnsayo && ' · Campaña de ensayo'}
     </p>
     <header class:list={['top-0 z-40 px-3 pt-3 md:px-4', completo ? 'fixed inset-x-0' : 'sticky']}>
-      <div class="cartel mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-3 !px-4 !pb-3 !pt-6 md:flex-nowrap md:!px-6">
-        <a href="/" class="font-display text-3xl tracking-wide text-white no-underline">
+      <div class="cartel mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-1 !px-4 !pb-2 !pt-6 backdrop-blur-md md:flex-nowrap md:!px-6">
+        <a href="/" class="inline-flex min-h-[44px] items-center font-display text-3xl tracking-wide text-white no-underline">
           PARED <span class="neon text-rosa">VIVA</span>
         </a>
-        <nav class="order-3 flex w-full justify-between border-t border-white/10 pt-3 text-xs uppercase tracking-[0.1em] md:order-none md:w-auto md:justify-start md:gap-8 md:border-0 md:pt-0 md:text-sm md:tracking-[0.2em]">
+        <nav class="order-3 flex w-full flex-wrap justify-between border-t border-white/10 pt-1 text-xs uppercase tracking-[0.1em] md:order-none md:w-auto md:flex-nowrap md:justify-start md:gap-6 md:border-0 md:pt-0 md:text-sm md:tracking-[0.2em]">
           {
             enlaces.map((e) => (
               <a
                 href={e.href}
                 class:list={[
-                  'whitespace-nowrap no-underline',
+                  'inline-flex min-h-[44px] items-center whitespace-nowrap px-1 no-underline transition-colors',
                   ruta === e.href ? 'neon text-ambar' : 'text-white/60 hover:text-white',
                 ]}
                 aria-current={ruta === e.href ? 'page' : undefined}
@@ -67,21 +73,55 @@ const enlaces = [
     </main>
     <footer class="mt-16 pb-6">
       <div class="ladrillera h-6"></div>
-      <div class="flex flex-col items-center gap-1 py-8 text-center text-sm text-white/50">
+      <div class="flex flex-col items-center gap-2 py-8 text-center text-sm text-white/50">
         <p class="m-0 font-display text-2xl tracking-wide text-white/80">PARED <span class="text-rosa">VIVA</span></p>
         <p class="m-0">Memoria del barrio, ladrillo por ladrillo · Construido en Stellar</p>
+        <nav class="m-0 mt-2 flex flex-wrap justify-center gap-x-5 gap-y-1" aria-label="Enlaces del pie">
+          {
+            [...enlaces, { href: '/guardianes', texto: 'Guardianes' }].map((e) => (
+              <a href={e.href} class="inline-flex min-h-[44px] items-center text-white/50 no-underline transition-colors hover:text-ambar md:min-h-0">
+                {e.texto}
+              </a>
+            ))
+          }
+        </nav>
       </div>
     </footer>
+    <Toast />
   </body>
 </html>
+
+<script>
+  // Revelado al hacer scroll: agrega .visible a los [data-revelar] cuando entran en pantalla.
+  const revelables = document.querySelectorAll<HTMLElement>('[data-revelar]');
+  if (revelables.length) {
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver(
+        (entradas) => {
+          entradas.forEach((entrada) => {
+            if (entrada.isIntersecting) {
+              entrada.target.classList.add('visible');
+              observer.unobserve(entrada.target);
+            }
+          });
+        },
+        { rootMargin: '0px 0px -8% 0px' },
+      );
+      revelables.forEach((el) => observer.observe(el));
+    } else {
+      revelables.forEach((el) => el.classList.add('visible'));
+    }
+  }
+</script>
 
 <style>
   header :global(.conectar-wallet) {
     background: transparent;
     color: var(--color-rosa);
     border: 2px solid currentColor;
-    border-radius: 0;
+    border-radius: var(--radius-md);
     padding: 0.5rem 1rem;
+    min-height: 44px;
     font: inherit;
     font-size: 0.875rem;
     font-weight: 700;
@@ -90,6 +130,7 @@ const enlaces = [
     text-shadow: 0 0 8px currentColor;
     box-shadow: 0 0 12px -2px currentColor, inset 0 0 12px -4px currentColor;
     cursor: pointer;
+    transition: background 0.2s, color 0.2s, text-shadow 0.2s;
   }
   @media (max-width: 400px) {
     header :global(.conectar-wallet) {
@@ -99,6 +140,7 @@ const enlaces = [
   }
   header :global(.conectar-wallet:hover) {
     background: var(--color-rosa);
-    color: #fff;
+    color: var(--color-noche);
+    text-shadow: none;
   }
 </style>

@@ -23,6 +23,16 @@ const { id, titulo } = Astro.props;
     modal.addEventListener('click', (e) => {
       if (e.target === modal) modal.close();
     });
+    // Recuerda qué tenía el foco al abrirse y se lo devuelve al cerrar si el navegador no lo hizo.
+    let abridor: Element | null = null;
+    new MutationObserver(() => {
+      if (modal.open && !abridor) abridor = document.activeElement;
+    }).observe(modal, { attributes: true, attributeFilter: ['open'] });
+    modal.addEventListener('close', () => {
+      const activo = document.activeElement;
+      if ((!activo || activo === document.body) && abridor instanceof HTMLElement && abridor.isConnected) abridor.focus();
+      abridor = null;
+    });
   });
 </script>
 
@@ -40,12 +50,12 @@ const { id, titulo } = Astro.props;
     backdrop-filter: blur(3px);
   }
   .modal[open] {
-    animation: aparecer 0.25s ease-out;
+    animation: entrada-modal 0.25s ease-out;
   }
-  @keyframes aparecer {
+  @keyframes entrada-modal {
     from {
       opacity: 0;
-      transform: translateY(12px);
+      transform: translateY(12px) scale(0.98);
     }
   }
 </style>

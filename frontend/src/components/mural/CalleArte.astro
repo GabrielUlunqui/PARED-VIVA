@@ -7,7 +7,7 @@ const { class: clase } = Astro.props;
 const obras = [
   { id: 'mona', texto: 'Mona Lisa' },
   { id: 'noche', texto: 'Noche estrellada' },
-  { id: 'mural', texto: 'Mural del barrio' },
+  { id: 'cerro', texto: 'Cerro de la Gloria' },
 ];
 ---
 
@@ -32,7 +32,7 @@ const obras = [
   import obras from './obras.json';
 
   type Tres = typeof import('three');
-  type Clave = 'mona' | 'noche' | 'mural';
+  type Clave = 'mona' | 'noche' | 'cerro';
   interface Pose {
     p: Vector3;
     q: Quaternion;
@@ -42,9 +42,9 @@ const obras = [
   const INFO: Record<Clave, { titulo: string; autor: string }> = {
     mona: { titulo: 'La Gioconda', autor: 'Leonardo da Vinci · 1503' },
     noche: { titulo: 'La noche estrellada', autor: 'Vincent van Gogh · 1889' },
-    mural: { titulo: 'Mural del barrio', autor: 'Pintado por los vecinos · 2026' },
+    cerro: { titulo: 'Ejército de los Andes', autor: 'Juan Manuel Ferrari · 1914 · Cerro de la Gloria, Mendoza' },
   };
-  const ORDEN: Clave[] = ['mona', 'noche', 'mural'];
+  const ORDEN: Clave[] = ['mona', 'noche', 'cerro'];
   const DURACION_TOTAL = 13500;
   const PAUSA = 8000;
   const PISO = -6;
@@ -52,7 +52,6 @@ const obras = [
   const H = 0.22;
   const CX = 5;
   const BASE = PISO + 0.6;
-  const PALETA = ['#ff3d9a', '#8b5cf6', '#ffb547', '#38e1ff', '#c6f432'];
   const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function iniciar(seccion: HTMLElement, THREE: Tres) {
@@ -120,24 +119,11 @@ const obras = [
 
     function destinos(obra: Clave): Pose[] {
       const lista: Pose[] = [];
-      if (obra === 'mural') {
-        const { c, r } = obras.noche;
-        for (let y = 0; y < r; y++)
-          for (let x = 0; x < c; x++) {
-            const adoptado = Math.random() < 0.22;
-            lista.push({
-              p: new THREE.Vector3(CX + (x - c / 2 + (y % 2 ? 0.5 : 0)) * W, BASE + y * H, 0),
-              q: quat(),
-              c: new THREE.Color(adoptado ? PALETA[Math.floor(Math.random() * PALETA.length)] : '#2b2633'),
-            });
-          }
-      } else {
-        const { c, r, hex } = obras[obra];
-        for (let y = 0; y < r; y++)
-          for (let x = 0; x < c; x++) {
-            lista.push({ p: new THREE.Vector3(CX + (x - c / 2 + 0.5) * W, BASE + y * H, 0), q: quat(), c: colorHex(hex, y * c + x) });
-          }
-      }
+      const { c, r, hex } = obras[obra];
+      for (let y = 0; y < r; y++)
+        for (let x = 0; x < c; x++) {
+          lista.push({ p: new THREE.Vector3(CX + (x - c / 2 + 0.5) * W, BASE + y * H, 0), q: quat(), c: colorHex(hex, y * c + x) });
+        }
       while (lista.length < N) lista.push(pila(lista.length));
       return lista;
     }
@@ -170,7 +156,7 @@ const obras = [
       botones.forEach((b) => b.classList.toggle('activo', b.dataset.obra === obra));
       const lista = destinos(obra);
       const orden = mezclar(N);
-      const enObra = obra === 'mona' ? obras.mona.c * obras.mona.r : N;
+      const enObra = obras[obra].c * obras[obra].r;
       for (let k = 0; k < N; k++) {
         const i = orden[k];
         const d = lista[k];
@@ -222,7 +208,7 @@ const obras = [
     const giro = new THREE.Quaternion();
     const euler = new THREE.Euler();
     const suave = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
-    formar(quieto ? 'mural' : 'mona');
+    formar(quieto ? 'cerro' : 'mona');
 
     // Con movimiento reducido se renderizan unos pocos cuadros (la formación es instantánea)
     // y se frena el loop; `despertar` lo reactiva ante resize o cambio de obra.

@@ -8,6 +8,7 @@ import {
   signTransaction,
   WatchWalletChanges,
 } from '@stellar/freighter-api';
+import { Buffer } from 'buffer';
 import { RED } from '../../contracts/config';
 import { ErrorWallet } from './errores';
 import { firmarConPrueba, prepararWalletPrueba, walletPrueba, type EtapaPrueba } from './wallet-prueba';

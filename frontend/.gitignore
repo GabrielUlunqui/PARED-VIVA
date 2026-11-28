@@ -22,3 +22,6 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# Registro del panel admin: contiene claves secretas de testnet, jamás se commitea
+data/

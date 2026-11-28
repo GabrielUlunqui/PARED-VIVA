@@ -11,18 +11,38 @@ const obras = [
 ];
 ---
 
-<section class:list={['calle-arte flex min-h-[640px] items-end', clase]} style="height: 100svh">
+<section class:list={['calle-arte flex min-h-[640px] items-end', clase]} style="height: 100svh" data-calle-arte>
   <canvas class="escena pointer-events-none fixed inset-0 -z-10 h-screen w-screen" aria-hidden="true"></canvas>
   <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-10 md:flex-row md:items-end md:justify-between md:pb-14">
     <slot />
-    <div class="cartel w-full max-w-sm shrink-0 !px-5 !pb-5 !pt-8">
+    <div class="cartel aparecer w-full max-w-sm shrink-0 rounded-xl !px-5 !pb-5 !pt-8">
       <p class="etiqueta m-0">Formando</p>
       <p class="obra-titulo neon m-0 mt-1 font-display text-4xl text-ambar">La mazamorra</p>
       <p class="obra-autor m-0 text-sm text-white/60">Fernando Fader · 1927</p>
-      <div class="barra-ladrillos mt-3"><div class="obra-avance w-0"></div></div>
+      <div class="barra-ladrillos mt-3 overflow-hidden rounded-md"><div class="obra-avance w-0"></div></div>
       <div class="mt-4 grid grid-cols-3 gap-2 text-xs font-bold uppercase">
-        {obras.map((o) => <button type="button" data-obra={o.id} class="obra-btn cursor-pointer px-2 py-2">{o.texto}</button>)}
+        {
+          obras.map((o) => (
+            <button
+              type="button"
+              data-obra={o.id}
+              class="obra-btn presionable cursor-pointer rounded-md px-2 py-2"
+              aria-pressed={o.id === 'fader' ? 'true' : 'false'}
+              aria-current={o.id === 'fader' ? 'true' : undefined}
+            >
+              {o.texto}
+            </button>
+          ))
+        }
       </div>
+      <button
+        type="button"
+        class="control-animacion presionable mt-3 min-h-11 w-full cursor-pointer rounded-md px-3 py-2 text-sm font-bold uppercase tracking-wider"
+        data-control-animacion
+        aria-pressed="false"
+      >
+        Pausar animación
+      </button>
     </div>
   </div>
 </section>
@@ -53,14 +73,54 @@ const obras = [
   const CX = 5;
   const BASE = PISO + 0.6;
   const PALETA = ['#ff3d9a', '#8b5cf6', '#ffb547', '#38e1ff', '#c6f432'];
-  const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const mediaMovimiento = matchMedia('(prefers-reduced-motion: reduce)');
+  const quieto = () => mediaMovimiento.matches;
+
+  function botonesDe(seccion: HTMLElement) {
+    return seccion.querySelectorAll<HTMLButtonElement>('[data-obra]');
+  }
+
+  function marcarObra(botones: NodeListOf<HTMLButtonElement>, obra: Clave) {
+    botones.forEach((b) => {
+      const activo = b.dataset.obra === obra;
+      b.classList.toggle('activo', activo);
+      b.setAttribute('aria-pressed', String(activo));
+      if (activo) b.setAttribute('aria-current', 'true');
+      else b.removeAttribute('aria-current');
+    });
+  }
+
+  function prepararFallback(seccion: HTMLElement) {
+    const canvas = seccion.querySelector('canvas.escena') as HTMLCanvasElement;
+    const titulo = seccion.querySelector('.obra-titulo') as HTMLElement;
+    const autor = seccion.querySelector('.obra-autor') as HTMLElement;
+    const avance = seccion.querySelector('.obra-avance') as HTMLElement;
+    const control = seccion.querySelector('[data-control-animacion]') as HTMLButtonElement;
+    canvas.classList.add('estatica');
+    titulo.textContent = INFO.mural.titulo;
+    autor.textContent = INFO.mural.autor;
+    avance.style.width = '100%';
+    marcarObra(botonesDe(seccion), 'mural');
+    botonesDe(seccion).forEach((b) => (b.disabled = true));
+    control.disabled = true;
+    control.textContent = 'Animación pausada';
+    control.setAttribute('aria-pressed', 'true');
+  }
+
+  function prepararFallbacks() {
+    document.querySelectorAll<HTMLElement>('.calle-arte').forEach(prepararFallback);
+  }
 
   function iniciar(seccion: HTMLElement, THREE: Tres) {
     const canvas = seccion.querySelector('canvas.escena') as HTMLCanvasElement;
     const titulo = seccion.querySelector('.obra-titulo') as HTMLElement;
     const autor = seccion.querySelector('.obra-autor') as HTMLElement;
     const avance = seccion.querySelector('.obra-avance') as HTMLElement;
-    const botones = seccion.querySelectorAll<HTMLButtonElement>('[data-obra]');
+    const botones = botonesDe(seccion);
+    const control = seccion.querySelector('[data-control-animacion]') as HTMLButtonElement;
+    canvas.classList.remove('estatica');
+    botones.forEach((b) => (b.disabled = false));
+    control.disabled = false;
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -161,13 +221,18 @@ const obras = [
     let obraActual: Clave = 'fader';
     let comienzo = 0;
     let automatico = true;
+    let manualPausado = false;
+    let seccionVisible = true;
+    let paginaVisible = !document.hidden;
+    let corriendo = false;
+    let pausadoEn = 0;
 
-    function formar(obra: Clave) {
+    function formar(obra: Clave, instantaneo = quieto()) {
       obraActual = obra;
       comienzo = performance.now();
       titulo.textContent = INFO[obra].titulo;
       autor.textContent = INFO[obra].autor;
-      botones.forEach((b) => b.classList.toggle('activo', b.dataset.obra === obra));
+      marcarObra(botones, obra);
       const lista = destinos(obra);
       const orden = mezclar(N);
       const enObra = obra === 'fader' ? obras.fader.c * obras.fader.r : N;
@@ -178,16 +243,67 @@ const obras = [
         hacia[i] = d;
         const fila = (d.p.y - BASE) / 17.5;
         const centro = Math.abs(d.p.x - CX) / 11;
-        inicio[i] = quieto ? comienzo : comienzo + (k < enObra ? fila * 8000 + centro * 1200 + Math.random() * 500 : Math.random() * 3000);
-        duracion[i] = quieto ? 1 : 2600 + Math.random() * 800;
+        inicio[i] = instantaneo ? comienzo : comienzo + (k < enObra ? fila * 8000 + centro * 1200 + Math.random() * 500 : Math.random() * 3000);
+        duracion[i] = instantaneo ? 1 : 2600 + Math.random() * 800;
       }
     }
+
+    function deberiaCorrer() {
+      return !manualPausado && seccionVisible && paginaVisible && !quieto();
+    }
+
+    function sincronizarControl() {
+      if (quieto()) {
+        control.disabled = true;
+        control.textContent = 'Animación pausada';
+        control.setAttribute('aria-pressed', 'true');
+        return;
+      }
+      control.disabled = false;
+      control.textContent = manualPausado ? 'Reanudar animación' : 'Pausar animación';
+      control.setAttribute('aria-pressed', String(manualPausado));
+    }
+
+    function pausarLoop() {
+      if (!corriendo) return;
+      renderer.setAnimationLoop(null);
+      corriendo = false;
+      pausadoEn = performance.now();
+    }
+
+    function reanudarLoop() {
+      if (corriendo) return;
+      const ahora = performance.now();
+      if (pausadoEn) {
+        const delta = ahora - pausadoEn;
+        comienzo += delta;
+        for (let i = 0; i < N; i++) inicio[i] += delta;
+        pausadoEn = 0;
+      }
+      renderer.setAnimationLoop(paso);
+      corriendo = true;
+    }
+
+    function sincronizarLoop() {
+      if (deberiaCorrer()) reanudarLoop();
+      else pausarLoop();
+      sincronizarControl();
+    }
+
+    control.addEventListener('click', () => {
+      manualPausado = !manualPausado;
+      sincronizarLoop();
+    });
 
     botones.forEach((b) =>
       b.addEventListener('click', () => {
         automatico = false;
-        formar(b.dataset.obra as Clave);
-        despertar();
+        formar(b.dataset.obra as Clave, quieto() || manualPausado);
+        if (!corriendo) {
+          pausadoEn = performance.now();
+          paso();
+        }
+        sincronizarLoop();
       }),
     );
 
@@ -213,20 +329,35 @@ const obras = [
     }
     addEventListener('resize', () => {
       redimensionar();
-      despertar();
+      if (!corriendo) paso();
     });
     redimensionar();
     camara.position.copy(recorrido[0].p);
+
+    const observer = new IntersectionObserver(
+      (entradas) => {
+        seccionVisible = entradas[0]?.isIntersecting ?? true;
+        sincronizarLoop();
+      },
+      { threshold: 0.03 },
+    );
+    observer.observe(seccion);
+
+    document.addEventListener('visibilitychange', () => {
+      paginaVisible = !document.hidden;
+      sincronizarLoop();
+    });
+
+    mediaMovimiento.addEventListener('change', () => {
+      sincronizarLoop();
+    });
 
     const dummy = new THREE.Object3D();
     const giro = new THREE.Quaternion();
     const euler = new THREE.Euler();
     const suave = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
-    formar(quieto ? 'mural' : 'fader');
+    formar('fader');
 
-    // Con movimiento reducido se renderizan unos pocos cuadros (la formación es instantánea)
-    // y se frena el loop; `despertar` lo reactiva ante resize o cambio de obra.
-    let restantes = quieto ? 6 : 0;
     function paso() {
       const ahora = performance.now();
       if (automatico && ahora - comienzo > DURACION_TOTAL + PAUSA) formar(ORDEN[(ORDEN.indexOf(obraActual) + 1) % ORDEN.length]);
@@ -260,50 +391,92 @@ const obras = [
       destino.x += mouseX * 4;
       destino.y -= mouseY * 2;
       objetivo.lerpVectors(recorrido[t].m, recorrido[t + 1].m, f);
-      camara.position.lerp(destino, quieto ? 1 : 0.05);
-      mira.lerp(objetivo, quieto ? 1 : 0.05);
+      camara.position.lerp(destino, quieto() ? 1 : 0.05);
+      mira.lerp(objetivo, quieto() ? 1 : 0.05);
       camara.lookAt(mira);
       lampara.material.color.setHSL(0.1, 1, Math.random() > 0.98 ? 0.4 : 0.72);
       neon.intensity = 260 + Math.sin(ahora / 300) * 40;
       renderer.render(escena, camara);
-      if (quieto && --restantes <= 0) renderer.setAnimationLoop(null);
-    }
-
-    function despertar() {
-      if (!quieto) return;
-      restantes = 6;
-      renderer.setAnimationLoop(paso);
     }
 
     renderer.setAnimationLoop(paso);
+    corriendo = true;
+    sincronizarLoop();
   }
 
+  let iniciado = false;
+
   async function arrancar() {
+    if (iniciado || mediaMovimiento.matches) return;
     const THREE = await import('three');
+    if (mediaMovimiento.matches) {
+      prepararFallbacks();
+      return;
+    }
+    iniciado = true;
     document.querySelectorAll<HTMLElement>('.calle-arte').forEach((s) => iniciar(s, THREE));
   }
 
-  if ('requestIdleCallback' in window) requestIdleCallback(() => arrancar(), { timeout: 1500 });
-  else setTimeout(arrancar, 250);
+  function programarArranque() {
+    if ('requestIdleCallback' in window) requestIdleCallback(() => void arrancar(), { timeout: 1500 });
+    else setTimeout(() => void arrancar(), 250);
+  }
+
+  if (mediaMovimiento.matches) prepararFallbacks();
+  else programarArranque();
+
+  mediaMovimiento.addEventListener('change', () => {
+    if (mediaMovimiento.matches) {
+      if (!iniciado) prepararFallbacks();
+    } else {
+      programarArranque();
+    }
+  });
 </script>
 
 <style>
+  .escena.estatica {
+    background:
+      linear-gradient(180deg, rgb(10 8 18 / 0.2), rgb(10 8 18 / 0.78)),
+      url('/mural.jpg') center / cover;
+    filter: saturate(0.8) brightness(0.65);
+  }
   .obra-btn {
-    background: #1a141f;
-    border: 2px solid #3a2a30;
+    background: var(--color-muro);
+    border: 2px solid var(--color-junta);
     border-bottom-width: 4px;
     color: rgb(255 255 255 / 0.75);
     font: inherit;
     transition: all 0.2s;
   }
   .obra-btn:hover {
-    border-color: #ffb547;
+    border-color: var(--color-ambar);
     color: #fff;
   }
   .obra-btn.activo {
-    background: #ffb547;
+    background: var(--color-ambar);
     border-color: #b07018;
-    color: #0a0812;
+    color: var(--color-noche);
     box-shadow: 0 0 22px #ffb54766;
+  }
+  .control-animacion {
+    color: var(--color-ambar);
+    background: transparent;
+    border: 2px solid var(--color-ambar);
+    transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
+  }
+  .control-animacion:hover:not(:disabled) {
+    background: var(--color-ambar);
+    color: var(--color-noche);
+  }
+  .control-animacion:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .obra-btn,
+    .control-animacion {
+      transition: none;
+    }
   }
 </style>

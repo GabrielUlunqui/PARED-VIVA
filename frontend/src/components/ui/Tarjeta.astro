@@ -1,9 +1,23 @@
 ---
+/**
+ * Tarjeta — panel con la firma visual del sitio (borde ladrillo, sombra dura, rounded-xl).
+ *
+ * Props:
+ *  - class:  clases extra
+ *  - plana:  true para la versión simple (.caja, sin el aparejo de ladrillo arriba)
+ *  - cualquier otro atributo (id, data-*, aria-*) se propaga al contenedor.
+ *
+ * Ejemplos:
+ *   <Tarjeta><h3>Un hito</h3>...</Tarjeta>
+ *   <Tarjeta plana class="p-3">Dato suelto</Tarjeta>
+ */
 interface Props {
   class?: string;
+  plana?: boolean;
+  [atributo: string]: unknown;
 }
 
-const { class: clase } = Astro.props;
+const { class: clase, plana = false, ...resto } = Astro.props;
 ---
 
-<div class:list={['cartel tarjeta h-full', clase]}><slot /></div>
+<div class:list={[plana ? 'caja p-4' : 'cartel', 'tarjeta h-full', clase]} {...resto}><slot /></div>

@@ -1,19 +1,49 @@
 ---
 import type { HTMLAttributes } from 'astro/types';
 
+/**
+ * Boton — acción del sitio con la identidad ladrillo/neón.
+ *
+ * Props:
+ *  - variante: 'primario' (ladrillo sólido, acción principal; default) | 'secundario' (neón contorneado)
+ *  - tamano:   'chico' | 'normal' (default) | 'grande'
+ *  - href:     si está, renderiza <a> en vez de <button> (para acciones que navegan)
+ *  - class:    clases extra
+ *  - cualquier otro atributo (type, id, disabled, data-*, aria-*) se propaga al elemento.
+ *
+ * Ejemplos:
+ *   <Boton type="submit">Donar</Boton>
+ *   <Boton variante="secundario" tamano="chico" data-reembolsar>Recuperar mi aporte</Boton>
+ *   <Boton href="/archivo" variante="secundario">Ver el archivo</Boton>
+ */
 interface Props extends HTMLAttributes<'button'> {
   variante?: 'primario' | 'secundario';
+  tamano?: 'chico' | 'normal' | 'grande';
+  href?: string;
 }
 
-const { variante = 'primario', type = 'button', class: clase, ...resto } = Astro.props;
+const { variante = 'primario', tamano = 'normal', href, type = 'button', class: clase, ...resto } = Astro.props;
+
+const clases = [
+  'boton presionable inline-flex cursor-pointer items-center justify-center gap-2 text-center font-sans font-bold uppercase tracking-wider no-underline disabled:cursor-wait disabled:opacity-60',
+  variante === 'primario' ? 'boton-ladrillo' : 'boton-neon',
+  {
+    'px-3 py-1.5 text-xs': tamano === 'chico',
+    'px-5 py-3 text-sm': tamano === 'normal',
+    'px-7 py-4 text-base': tamano === 'grande',
+  },
+  clase,
+];
 ---
 
-<button
-  type={type}
-  class:list={[
-    'boton cursor-pointer px-5 py-3 font-sans text-sm font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60',
-    variante === 'primario' ? 'boton-ladrillo' : 'boton-neon',
-    clase,
-  ]}
-  {...resto}><slot /></button
->
+{
+  href ? (
+    <a href={href} class:list={clases} {...resto}>
+      <slot />
+    </a>
+  ) : (
+    <button type={type} class:list={clases} {...resto}>
+      <slot />
+    </button>
+  )
+}

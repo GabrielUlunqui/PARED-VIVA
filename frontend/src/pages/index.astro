@@ -7,7 +7,12 @@ import DonarModal from '../components/donar/DonarModal.astro';
 
 const pasos = [
   { numero: '01', titulo: 'Elegí tu ladrillo', texto: 'Tocá un ladrillo libre del mural. Cada uno es un pedacito de la pared real.', color: 'text-rosa' },
-  { numero: '02', titulo: 'Dejá un recuerdo', texto: 'Contá una historia o subí una foto y doná en USDC desde tu wallet.', color: 'text-violeta' },
+  {
+    numero: '02',
+    titulo: 'Dejá un recuerdo',
+    texto: 'Contá una historia o subí una foto. En la demo podés usar una billetera de prueba que se crea sola en el navegador: no instalás nada.',
+    color: 'text-violeta',
+  },
   {
     numero: '03',
     titulo: 'La pared se pinta',
@@ -21,27 +26,30 @@ const pasos = [
   <CalleArte>
     <div class="max-w-xl">
       <p class="neon m-0 text-sm uppercase tracking-[0.35em] text-ambar">Medianoche en el barrio</p>
-      <h1 class="m-0 mt-2 text-7xl leading-[0.9] tracking-normal md:text-8xl">Cada ladrillo<br /><span class="neon text-rosa">hace arte</span></h1>
-      <p class="m-0 mt-4 max-w-sm border-l-4 border-[#8a3b2b] pl-4 text-white/70">
+      <h1 class="m-0 mt-2 text-6xl leading-[0.9] tracking-normal sm:text-7xl md:text-8xl">Cada ladrillo<br /><span class="neon text-rosa">hace arte</span></h1>
+      <p class="m-0 mt-4 max-w-sm border-l-4 border-mortero pl-4 text-white/70">
         Los ladrillos del barrio se mueven solos y se arman en grandes obras. Sumá el tuyo al mural.
+      </p>
+      <p class="m-0 mt-3 max-w-sm text-sm text-white/60">
+        Para probar no hace falta instalar nada: la demo crea una billetera de prueba en tu navegador y usa dinero de prueba.
       </p>
       <div class="mt-5 max-w-sm" data-hero-campania hidden>
         <p class="m-0 text-sm text-white/80"><strong class="text-white" data-hero-recaudado>—</strong> de <span data-hero-meta>—</span> · <span data-hero-porcentaje>0</span>% de la meta</p>
-        <div class="barra-ladrillos mt-2 h-2" aria-hidden="true"><div class="relleno" data-hero-relleno style="width: 0%"></div></div>
+        <div class="barra-ladrillos mt-2 h-2 overflow-hidden rounded-md" aria-hidden="true"><div class="relleno" data-hero-relleno style="width: 0%"></div></div>
       </div>
-      <a href="#mural-seccion" class="boton-ladrillo mt-5 inline-block px-8 py-3 text-lg uppercase tracking-wider no-underline">Adoptá tu ladrillo</a>
+      <a href="#mural-seccion" data-hero-cta data-ancla-mural class="boton-ladrillo presionable brillo-neon mt-5 inline-block rounded-md px-8 py-3 text-lg uppercase tracking-wider no-underline">Adoptá tu ladrillo</a>
     </div>
   </CalleArte>
 
   <div class="mx-auto flex max-w-6xl flex-col px-4">
-    <section class="grid min-h-screen items-center gap-8 py-28 lg:grid-cols-2">
+    <section class="grid min-h-screen items-center gap-8 py-28 lg:grid-cols-2" data-revelar>
       <Progreso>
-        <a href="#mural-seccion" class="boton-ladrillo mt-6 block w-full py-4 text-center text-lg uppercase tracking-wider no-underline">Adoptá tu ladrillo</a>
+        <a href="#mural-seccion" data-adoptar-cta data-ancla-mural class="boton-ladrillo presionable brillo-neon mt-6 block w-full rounded-md py-4 text-center text-lg uppercase tracking-wider no-underline">Adoptá tu ladrillo</a>
       </Progreso>
       <div></div>
     </section>
 
-    <section id="mural-seccion" class="flex min-h-screen scroll-mt-28 flex-col justify-center py-28">
+    <section id="mural-seccion" class="flex min-h-screen scroll-mt-28 flex-col justify-center py-28" data-revelar tabindex="-1">
       <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p class="etiqueta m-0">El mural</p>
@@ -49,25 +57,26 @@ const pasos = [
         </div>
         <p class="m-0 max-w-sm text-sm text-white/60">Los ladrillos apagados están libres. Los que brillan ya tienen dueño y un recuerdo para leer.</p>
       </div>
+      <p data-ladrillo-invalido class="caja m-0 mb-4 rounded-md p-3 text-sm text-white/80" role="alert" hidden></p>
       <MuralGrid />
     </section>
 
-    <section class="flex min-h-screen flex-col justify-center py-28">
+    <section class="flex min-h-screen flex-col justify-center py-28" data-revelar>
       <p class="etiqueta m-0">Cómo funciona</p>
       <h2 class="m-0 text-5xl md:text-6xl">Una pared que <span class="neon text-ambar">guarda memoria</span></h2>
       <p class="m-0 mt-4 max-w-2xl text-white/80 [text-shadow:0_2px_10px_#0a0812,0_0_24px_#0a0812]">
         El mural del barrio se está borrando. Cada aporte adopta un ladrillo de su versión digital y le suma un recuerdo que queda guardado para
         siempre. Cuando se llega a la meta, el dinero va al restaurador por etapas, y solo si los firmantes del barrio lo aprueban.
       </p>
-      <div class="mt-6 grid max-w-2xl grid-cols-3 gap-3 text-center">
-        <div class="caja p-3"><p class="m-0 font-display text-2xl text-rosa md:text-3xl">2 de 3</p><p class="m-0 text-xs uppercase text-white/50">firmas por hito</p></div>
-        <div class="caja p-3"><p class="m-0 font-display text-2xl text-violeta md:text-3xl">100%</p><p class="m-0 text-xs uppercase text-white/50">reembolsable</p></div>
-        <div class="caja p-3"><p class="m-0 font-display text-2xl text-ambar md:text-3xl">En IPFS</p><p class="m-0 text-xs uppercase text-white/50">cada recuerdo</p></div>
+      <div class="mt-6 grid max-w-2xl grid-cols-1 gap-3 text-center sm:grid-cols-3">
+        <div class="caja rounded-md p-3"><p class="m-0 font-display text-2xl text-rosa md:text-3xl">2 de 3</p><p class="m-0 text-xs uppercase text-white/50">firmas por hito</p></div>
+        <div class="caja rounded-md p-3"><p class="m-0 font-display text-2xl text-violeta md:text-3xl">100%</p><p class="m-0 text-xs uppercase text-white/50">reembolsable</p></div>
+        <div class="caja rounded-md p-3"><p class="m-0 font-display text-2xl text-ambar md:text-3xl">En IPFS</p><p class="m-0 text-xs uppercase text-white/50">cada recuerdo</p></div>
       </div>
       <ol class="m-0 mt-8 grid list-none gap-6 p-0 md:grid-cols-3">
         {
-          pasos.map((p) => (
-            <li class="cartel">
+          pasos.map((p, i) => (
+            <li class="cartel rounded-xl" data-revelar style={`transition-delay: ${i * 90}ms`}>
               <p class:list={['neon m-0 font-display text-6xl', p.color]}>{p.numero}</p>
               <h3 class="m-0 mt-2 text-3xl">{p.titulo}</h3>
               <p class="m-0 mt-2 text-white/70">{p.texto}</p>
@@ -77,21 +86,21 @@ const pasos = [
       </ol>
     </section>
 
-    <section class="flex min-h-screen flex-col justify-center py-28">
+    <section class="flex min-h-screen flex-col justify-center py-28" data-revelar>
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p class="etiqueta m-0">El archivo</p>
           <h2 class="m-0 text-5xl md:text-6xl">Lo que cuenta <span class="neon text-ambar">la pared</span></h2>
         </div>
-        <a href="/archivo" class="boton-neon px-4 py-2 text-sm font-bold uppercase tracking-wider no-underline">Ver todos los recuerdos</a>
+        <a href="/archivo" class="boton-neon presionable rounded-md px-4 py-2 text-sm font-bold uppercase tracking-wider no-underline">Ver todos los recuerdos</a>
       </div>
       <div class="recientes mt-8 grid gap-6 md:grid-cols-3" aria-busy="true">
         {
           [0, 1, 2].map(() => (
-            <div class="cartel animate-pulse">
-              <div class="h-4 w-11/12 bg-white/10" />
-              <div class="mt-3 h-4 w-8/12 bg-white/10" />
-              <div class="mt-8 h-3 w-5/12 bg-white/10" />
+            <div class="cartel rounded-xl">
+              <div class="skeleton h-4 w-11/12 rounded-md bg-white/10" />
+              <div class="skeleton mt-3 h-4 w-8/12 rounded-md bg-white/10" />
+              <div class="skeleton mt-8 h-3 w-5/12 rounded-md bg-white/10" />
             </div>
           ))
         }
@@ -105,20 +114,36 @@ const pasos = [
 <script>
   import { datos } from '../lib/datos';
   import { emitir } from '../lib/eventos';
+  import { porcentajeCampania } from '../lib/formato';
   import { leerRecuerdo } from '../lib/ipfs';
-  import { formatearUsdc } from '../lib/tipos';
+  import { formatearUsdc, type EstadoCampania } from '../lib/tipos';
 
   const heroCaja = document.querySelector('[data-hero-campania]') as HTMLElement;
   const heroTexto = (sel: string, valor: string) => ((heroCaja.querySelector(sel) as HTMLElement).textContent = valor);
+  const movimientoReducido = matchMedia('(prefers-reduced-motion: reduce)');
+
+  function actualizarCtaHero(estado: EstadoCampania) {
+    const cta = document.querySelector('[data-hero-cta]') as HTMLAnchorElement;
+    if (estado === 'Financiada' || estado === 'Completada') {
+      cta.textContent = 'Ver los recuerdos';
+      cta.href = '/archivo';
+      cta.removeAttribute('data-ancla-mural');
+    } else if (estado === 'Fallida') {
+      cta.textContent = 'Recuperá tu aporte';
+      cta.href = '/mi-aporte';
+      cta.removeAttribute('data-ancla-mural');
+    }
+  }
 
   async function cargarHero() {
     const c = await datos.obtenerCampania();
-    const porcentaje = c.meta > 0n ? Math.min(100, Number((c.recaudado * 100n) / c.meta)) : 0;
+    const porcentaje = porcentajeCampania(c.recaudado, c.meta);
     heroTexto('[data-hero-recaudado]', formatearUsdc(c.recaudado));
     heroTexto('[data-hero-meta]', formatearUsdc(c.meta));
     heroTexto('[data-hero-porcentaje]', String(porcentaje));
     (heroCaja.querySelector('[data-hero-relleno]') as HTMLElement).style.width = `${porcentaje}%`;
     heroCaja.hidden = false;
+    actualizarCtaHero(c.estado);
   }
 
   cargarHero().catch(() => {});
@@ -129,7 +154,7 @@ const pasos = [
   function tarjeta(id: number, texto: string, alias: string, color: string) {
     const a = document.createElement('a');
     a.href = `/ladrillo/${id}`;
-    a.className = 'cartel block text-inherit no-underline transition hover:-translate-y-2';
+    a.className = 'cartel aparecer block rounded-xl text-inherit no-underline motion-safe:transition motion-safe:hover:-translate-y-2';
     const p = document.createElement('p');
     p.className = 'm-0 text-xl';
     p.textContent = `“${texto}”`;
@@ -149,7 +174,7 @@ const pasos = [
     });
     if (tarjetas.length === 0) {
       const vacio = document.createElement('p');
-      vacio.className = 'cartel m-0 text-white/60 md:col-span-3';
+      vacio.className = 'cartel aparecer m-0 rounded-xl text-white/60 md:col-span-3';
       vacio.textContent = 'Todavía no hay recuerdos. ¡El primero puede ser el tuyo!';
       tarjetas.push(vacio);
     }
@@ -159,10 +184,48 @@ const pasos = [
 
   cargarRecientes().catch(() => contenedor.replaceChildren());
 
-  const pedido = Number(new URLSearchParams(location.search).get('ladrillo'));
-  if (Number.isInteger(pedido) && pedido >= 0 && new URLSearchParams(location.search).has('ladrillo')) {
-    const abrir = () => setTimeout(() => emitir('pv:ladrillo-seleccionado', { id: pedido }), 300);
-    if (document.readyState === 'complete') abrir();
-    else addEventListener('load', abrir, { once: true });
+  document.querySelectorAll<HTMLAnchorElement>('a[data-ancla-mural]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      if (!a.hasAttribute('data-ancla-mural')) return;
+      const destino = document.getElementById('mural-seccion');
+      if (!destino) return;
+      e.preventDefault();
+      destino.scrollIntoView({ behavior: movimientoReducido.matches ? 'auto' : 'smooth', block: 'start' });
+      destino.focus({ preventScroll: true });
+      history.replaceState(null, '', '#mural-seccion');
+    });
+  });
+
+  async function abrirLadrilloPedido() {
+    const parametros = new URLSearchParams(location.search);
+    if (!parametros.has('ladrillo')) return;
+    const crudo = parametros.get('ladrillo') ?? '';
+    const pedido = Number(crudo);
+    const aviso = document.querySelector('[data-ladrillo-invalido]') as HTMLElement;
+    const mostrarAviso = (texto: string) => {
+      aviso.textContent = texto;
+      aviso.hidden = false;
+      aviso.scrollIntoView({ behavior: movimientoReducido.matches ? 'auto' : 'smooth', block: 'center' });
+    };
+
+    try {
+      const campania = await datos.obtenerCampania();
+      const total = campania.filas * campania.columnas;
+      if (!/^\d+$/.test(crudo) || !Number.isInteger(pedido) || pedido < 0 || pedido >= total) {
+        mostrarAviso(`Ese ladrillo no existe en esta pared. Elegí uno del mural o probá con un número entre 0 y ${total - 1}.`);
+        return;
+      }
+      if (campania.estado !== 'Activa') {
+        mostrarAviso('La colecta ya terminó, así que este ladrillo no se puede adoptar. Todavía podés recorrer el mural y leer los recuerdos.');
+        return;
+      }
+      const abrir = () => setTimeout(() => emitir('pv:ladrillo-seleccionado', { id: pedido }), 300);
+      if (document.readyState === 'complete') abrir();
+      else addEventListener('load', abrir, { once: true });
+    } catch {
+      mostrarAviso('No pudimos revisar ese ladrillo porque la red no respondió. Probá recargar en unos segundos.');
+    }
   }
+
+  void abrirLadrilloPedido();
 </script>

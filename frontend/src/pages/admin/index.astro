@@ -1,0 +1,118 @@
+---
+import Base from '../../layouts/Base.astro';
+import PanelCampanias from '../../components/admin/PanelCampanias.astro';
+import PanelFirmantes from '../../components/admin/PanelFirmantes.astro';
+import { ADMIN_WEB } from 'astro:env/server';
+
+export const prerender = false;
+
+// ADMIN_WEB viene del entorno del servidor; si no está activo el panel no existe (404).
+const adminActivo = ADMIN_WEB;
+if (!adminActivo) {
+  Astro.response.status = 404;
+}
+---
+
+{
+  !adminActivo ? (
+    <Base titulo="No encontrado">
+      <h1>Página no encontrada</h1>
+      <p class="text-white/60">Acá no hay nada. Volvé al <a href="/">inicio</a>.</p>
+    </Base>
+  ) : (
+    <Base titulo="Admin" descripcion="Panel de administración de testnet de Pared Viva.">
+      <p class="etiqueta m-0">Administración</p>
+      <h1 class="m-0 mt-1">Panel de la pared</h1>
+      <p class="caja m-0 mt-4 p-3 text-sm text-ambar">Panel de administración de testnet. Las claves viven en este servidor.</p>
+
+      <div data-vista-login class="mx-auto mt-8 max-w-md">
+        <form data-form-login class="cartel grid gap-3">
+          <h2 class="m-0 text-3xl">Entrar</h2>
+          <div class="grid gap-1">
+            <label for="admin-clave" class="text-sm font-bold">Clave de administración</label>
+            <input id="admin-clave" type="password" required autocomplete="current-password" class="caja w-full px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <button type="submit" class="boton-ladrillo presionable w-full cursor-pointer rounded-md px-5 py-3 text-sm font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60" data-login-boton>Entrar</button>
+          </div>
+          <p class="m-0 text-sm font-bold text-rosa" data-login-error aria-live="polite"></p>
+        </form>
+        <p class="m-0 mt-3 text-center text-sm text-white/50" data-login-estado aria-live="polite"></p>
+      </div>
+
+      <div data-vista-panel hidden>
+        <div class="mt-6 flex flex-wrap items-center gap-2" role="tablist" aria-label="Secciones del panel">
+          <button type="button" role="tab" aria-selected="true" class="boton-ladrillo presionable cursor-pointer rounded-md px-4 py-2 text-xs font-bold uppercase tracking-wider" data-tab="campanias">Campañas</button>
+          <button type="button" role="tab" aria-selected="false" class="boton-neon presionable cursor-pointer rounded-md px-4 py-2 text-xs font-bold uppercase tracking-wider" data-tab="firmantes">Firmantes</button>
+          <button type="button" class="ml-auto cursor-pointer rounded-md px-3 py-2 text-xs font-bold uppercase tracking-wider text-white/50 hover:text-white" data-salir>Cerrar sesión</button>
+        </div>
+        <div data-seccion="campanias" class="mt-6">
+          <PanelCampanias />
+        </div>
+        <div data-seccion="firmantes" class="mt-6" hidden>
+          <PanelFirmantes />
+        </div>
+      </div>
+    </Base>
+  )
+}
+
+<script>
+  import { getJSON, postJSON, toast } from '../../components/admin/util';
+
+  const login = document.querySelector<HTMLElement>('[data-vista-login]');
+  const panel = document.querySelector<HTMLElement>('[data-vista-panel]');
+  if (login && panel) {
+    const mostrarPanel = () => {
+      login.hidden = true;
+      panel.hidden = false;
+      document.dispatchEvent(new CustomEvent('admin:sesion'));
+    };
+
+    // Si ya hay sesión viva, entra directo.
+    getJSON('/api/admin/estado')
+      .then(() => mostrarPanel())
+      .catch(() => {});
+
+    document.querySelector('[data-form-login]')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const boton = document.querySelector<HTMLButtonElement>('[data-login-boton]')!;
+      const error = document.querySelector<HTMLElement>('[data-login-error]')!;
+      const clave = (document.querySelector<HTMLInputElement>('#admin-clave')!).value;
+      boton.disabled = true;
+      error.textContent = '';
+      try {
+        await postJSON('/api/admin/sesion', { clave });
+        mostrarPanel();
+      } catch (err) {
+        error.textContent = (err as Error).message;
+      } finally {
+        boton.disabled = false;
+      }
+    });
+
+    document.querySelector('[data-salir]')?.addEventListener('click', async () => {
+      try {
+        await postJSON('/api/admin/sesion', undefined, 'DELETE');
+      } catch {}
+      toast('Sesión cerrada.', 'info');
+      panel.hidden = true;
+      login.hidden = false;
+    });
+
+    // Pestañas
+    document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((boton) => {
+      boton.addEventListener('click', () => {
+        document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((b) => {
+          const activo = b === boton;
+          b.setAttribute('aria-selected', String(activo));
+          b.classList.toggle('boton-ladrillo', activo);
+          b.classList.toggle('boton-neon', !activo);
+        });
+        document.querySelectorAll<HTMLElement>('[data-seccion]').forEach((seccion) => {
+          seccion.hidden = seccion.dataset.seccion !== boton.dataset.tab;
+        });
+      });
+    });
+  }
+</script>

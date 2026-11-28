@@ -1,0 +1,412 @@
+---
+/**
+ * PanelCampanias — pestaña Campañas del admin: lista con estado y formulario de nueva campaña.
+ * Toda la lógica es cliente; habla con /api/admin/* (contrato compartido con el backend).
+ */
+---
+
+<section data-panel-campanias>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 class="m-0 text-3xl">Campañas</h2>
+    <button type="button" class="boton-neon presionable cursor-pointer rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-wider" data-recargar>Recargar</button>
+  </div>
+
+  <div data-lista-campanias class="mt-4 grid gap-4">
+    <div class="skeleton h-28"></div>
+    <div class="skeleton h-28"></div>
+  </div>
+
+  <details class="cartel mt-8" data-detalle-nueva>
+    <summary class="cursor-pointer font-display text-2xl tracking-wide text-white">Nueva campaña</summary>
+    <form data-form-nueva class="mt-4 grid gap-4" novalidate>
+      <div class="grid gap-1">
+        <label for="nc-nombre" class="text-sm font-bold">Nombre</label>
+        <input id="nc-nombre" name="nombre" type="text" required maxlength="60" placeholder="Mural de la plaza" class="caja w-full px-3 py-2 text-sm" />
+        <small class="text-white/50">Como la van a reconocer en esta lista.</small>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-3">
+        <div class="grid gap-1">
+          <label for="nc-meta" class="text-sm font-bold">Meta (USDC)</label>
+          <input id="nc-meta" name="meta" type="text" inputmode="decimal" required placeholder="1000" class="caja w-full px-3 py-2 text-sm" />
+          <small class="text-white/50">Lo que hay que juntar. En la demo es dinero de prueba.</small>
+        </div>
+        <div class="grid gap-1">
+          <label for="nc-minimo" class="text-sm font-bold">Aporte mínimo por ladrillo (USDC)</label>
+          <input id="nc-minimo" name="minimo" type="text" inputmode="decimal" required placeholder="1" class="caja w-full px-3 py-2 text-sm" />
+          <small class="text-white/50">Mínimo × ladrillos tiene que alcanzar la meta.</small>
+        </div>
+        <div class="grid gap-1">
+          <label for="nc-dias" class="text-sm font-bold">Días de campaña</label>
+          <input id="nc-dias" name="dias" type="number" min="1" max="365" step="1" required placeholder="30" class="caja w-full px-3 py-2 text-sm" />
+          <small class="text-white/50">Pasada la fecha límite, los aportes se pueden recuperar.</small>
+        </div>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="grid gap-1">
+          <label for="nc-filas" class="text-sm font-bold">Filas de ladrillos</label>
+          <input id="nc-filas" name="filas" type="number" min="1" max="100" step="1" required placeholder="10" class="caja w-full px-3 py-2 text-sm" />
+        </div>
+        <div class="grid gap-1">
+          <label for="nc-columnas" class="text-sm font-bold">Columnas de ladrillos</label>
+          <input id="nc-columnas" name="columnas" type="number" min="1" max="100" step="1" required placeholder="20" class="caja w-full px-3 py-2 text-sm" />
+        </div>
+      </div>
+
+      <fieldset class="caja grid gap-2 p-3">
+        <legend class="px-1 text-sm font-bold">Hitos de la obra</legend>
+        <small class="text-white/50">Etapas en las que se libera la plata (pintura, andamios…). Tienen que sumar exactamente la meta.</small>
+        <div data-hitos class="grid gap-2"></div>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" class="boton-neon presionable cursor-pointer rounded-md px-3 py-1.5 text-xs font-bold uppercase" data-agregar-hito>+ Agregar hito</button>
+          <p class="m-0 text-sm" data-suma-hitos aria-live="polite"></p>
+        </div>
+      </fieldset>
+
+      <div class="grid gap-1">
+        <label for="nc-restaurador" class="text-sm font-bold">Restaurador</label>
+        <input id="nc-restaurador" name="restaurador" type="text" required spellcheck="false" placeholder="G…" class="caja w-full px-3 py-2 font-mono text-xs" />
+        <small class="text-white/50">Billetera de quien ejecuta la obra y recibe los hitos. Por defecto el de la campaña oficial.</small>
+      </div>
+
+      <fieldset class="caja grid gap-2 p-3">
+        <legend class="px-1 text-sm font-bold">Firmantes (3)</legend>
+        <small class="text-white/50">Vecinos que aprueban los hitos. Elegilos de la lista o pegá una dirección.</small>
+        <div data-firmantes class="grid gap-2"></div>
+        <p class="m-0 text-sm" data-firmantes-error></p>
+      </fieldset>
+
+      <div data-errores class="m-0 grid gap-1 text-sm font-bold text-rosa" aria-live="polite"></div>
+
+      <div>
+        <button type="submit" class="boton-ladrillo presionable cursor-pointer rounded-md px-5 py-3 text-sm font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60" data-revisar disabled>Revisar antes de desplegar</button>
+      </div>
+    </form>
+
+    <div data-confirmacion class="mt-4" hidden>
+      <div class="caja grid gap-2 p-4">
+        <h3 class="m-0 text-2xl">Confirmá el despliegue</h3>
+        <div data-resumen class="grid gap-1 text-sm"></div>
+        <p class="m-0 text-sm text-white/60">Esto crea una campaña nueva en la red de prueba de Stellar y la anota en el registro. No se puede deshacer desde acá.</p>
+        <div class="flex flex-wrap gap-3">
+          <button type="button" class="boton-ladrillo presionable cursor-pointer rounded-md px-5 py-3 text-sm font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60" data-confirmar>Desplegar campaña</button>
+          <button type="button" class="boton-neon presionable cursor-pointer rounded-md px-4 py-2 text-xs font-bold uppercase" data-cancelar>Volver</button>
+        </div>
+        <p class="m-0 text-sm" data-estado-despliegue aria-live="polite"></p>
+      </div>
+    </div>
+
+    <div data-exito class="mt-4" hidden>
+      <div class="caja grid gap-2 border-ambar p-4">
+        <h3 class="neon m-0 text-2xl text-ambar">Campaña desplegada</h3>
+        <p class="m-0 text-sm">Contrato: <code data-exito-id></code></p>
+        <p class="m-0 text-sm"><a data-exito-tx target="_blank" rel="noopener">Ver el comprobante público</a></p>
+        <div>
+          <button type="button" class="boton-ladrillo presionable cursor-pointer rounded-md px-4 py-2 text-xs font-bold uppercase tracking-wider" data-usar-nueva>Usar en la web</button>
+        </div>
+      </div>
+    </div>
+  </details>
+</section>
+
+<script>
+  import { aUnidades, aUsdcTexto, abreviar, esDireccionValida, getJSON, postJSON, toast, urlTx } from './util';
+
+  interface Campania {
+    id: string;
+    nombre: string;
+    creada: number;
+    origen: string;
+    estado: Record<string, unknown> | null;
+    firmantes: string[];
+  }
+  interface FirmanteConocido {
+    direccion: string;
+    nombre: string;
+    tieneClave: boolean;
+  }
+
+  const $ = <T extends HTMLElement = HTMLElement>(sel: string): T => document.querySelector(sel) as T;
+  const lista = $('[data-lista-campanias]');
+  const form = $('[data-form-nueva]') as HTMLFormElement;
+  const erroresEl = $('[data-errores]');
+  let conocidos: FirmanteConocido[] = [];
+  let oficial: Campania | undefined;
+
+  const entrada = (nombre: string) => form.querySelector<HTMLInputElement>(`[name="${nombre}"]`)!;
+
+  // ---------- Lista de campañas ----------
+  function textoEstado(c: Campania): string {
+    const e = c.estado ?? {};
+    const partes: string[] = [];
+    if (e.recaudado !== undefined && e.meta !== undefined) {
+      partes.push(`${aUsdcTexto(BigInt(String(e.recaudado)))} de ${aUsdcTexto(BigInt(String(e.meta)))} USDC`);
+    }
+    if (typeof e.estado === 'string') partes.push(e.estado);
+    else if (e.estado && typeof (e.estado as { tag?: string }).tag === 'string') partes.push((e.estado as { tag: string }).tag);
+    return partes.length ? partes.join(' · ') : c.estado ? '' : 'No se pudo leer el estado en la red';
+  }
+
+  async function cargar() {
+    lista.innerHTML = '<div class="skeleton h-28"></div><div class="skeleton h-28"></div>';
+    try {
+      const datos = await getJSON<{ activa: string; campanias: Campania[] }>('/api/admin/campanias');
+      oficial = datos.campanias.find((c) => c.origen === 'config') ?? datos.campanias[0];
+      // Restaurador por defecto: el de la campaña oficial, si el estado lo trae.
+      const restauradorOficial = (oficial as unknown as Record<string, unknown>)?.restaurador ?? oficial?.estado?.restaurador;
+      if (typeof restauradorOficial === 'string' && esDireccionValida(restauradorOficial) && !entrada('restaurador').value) {
+        entrada('restaurador').value = restauradorOficial;
+        validar();
+      }
+      lista.innerHTML = '';
+      if (!datos.campanias.length) {
+        lista.innerHTML = '<p class="text-white/60">Todavía no hay campañas registradas.</p>';
+      }
+      datos.campanias.forEach((c) => {
+        const activa = c.id === datos.activa;
+        const tarjeta = document.createElement('article');
+        tarjeta.className = 'cartel grid gap-2';
+        tarjeta.innerHTML = `
+          <div class="flex flex-wrap items-center gap-2">
+            <h3 class="m-0 text-2xl text-white"></h3>
+            ${activa ? '<span class="rounded-full bg-ambar px-2 py-0.5 text-xs font-bold uppercase text-noche">En la web</span>' : ''}
+            <span class="rounded-full border border-junta px-2 py-0.5 text-xs uppercase text-white/50"></span>
+          </div>
+          <p class="m-0 text-sm text-white/70"></p>
+          <p class="m-0 font-mono text-xs text-white/50 break-all"></p>
+          <div class="acciones mt-1 flex flex-wrap gap-2"></div>`;
+        tarjeta.querySelector('h3')!.textContent = c.nombre;
+        (tarjeta.querySelectorAll('span')[1] as HTMLElement).textContent = c.origen === 'config' ? 'original' : 'creada acá';
+        (tarjeta.querySelectorAll('p')[0] as HTMLElement).textContent = textoEstado(c);
+        (tarjeta.querySelectorAll('p')[1] as HTMLElement).textContent = c.id;
+        if (!activa) {
+          const boton = document.createElement('button');
+          boton.type = 'button';
+          boton.className = 'boton-neon presionable cursor-pointer rounded-md px-3 py-1.5 text-xs font-bold uppercase';
+          boton.textContent = 'Usar en la web';
+          boton.addEventListener('click', async () => {
+            boton.disabled = true;
+            try {
+              await postJSON('/api/admin/campania-activa', { id: c.id });
+              toast(`Ahora la web muestra "${c.nombre}".`, 'exito');
+              cargar();
+            } catch (err) {
+              toast((err as Error).message, 'error');
+              boton.disabled = false;
+            }
+          });
+          tarjeta.querySelector('.acciones')!.appendChild(boton);
+        }
+        lista.appendChild(tarjeta);
+      });
+    } catch (err) {
+      lista.innerHTML = '';
+      const p = document.createElement('p');
+      p.className = 'caja p-3 text-sm text-rosa';
+      p.textContent = (err as Error).message;
+      lista.appendChild(p);
+    }
+  }
+
+  // ---------- Hitos dinámicos ----------
+  const hitosEl = $('[data-hitos]');
+  function agregarHito(valor = '') {
+    const fila = document.createElement('div');
+    fila.className = 'flex items-center gap-2';
+    fila.innerHTML = `
+      <input type="text" inputmode="decimal" placeholder="USDC" value="${valor}" class="caja w-full max-w-40 px-3 py-2 text-sm" data-hito />
+      <button type="button" class="boton-neon cursor-pointer rounded-md px-2 py-1 text-xs" data-quitar-hito aria-label="Quitar hito">✕</button>`;
+    fila.querySelector('[data-quitar-hito]')!.addEventListener('click', () => {
+      fila.remove();
+      validar();
+    });
+    fila.querySelector('input')!.addEventListener('input', validar);
+    hitosEl.appendChild(fila);
+  }
+
+  // ---------- Firmantes: selector o pegado ----------
+  const firmantesEl = $('[data-firmantes]');
+  function agregarSelectorFirmante() {
+    const fila = document.createElement('div');
+    fila.className = 'grid gap-1';
+    const opciones = conocidos.map((f) => `<option value="${f.direccion}">${f.nombre} (${abreviar(f.direccion)})${f.tieneClave ? ' · clave acá' : ''}</option>`).join('');
+    fila.innerHTML = `
+      <select class="caja w-full px-3 py-2 text-sm" data-firmante-select>
+        <option value="">Elegí de la lista…</option>
+        ${opciones}
+        <option value="manual">Pegar dirección…</option>
+      </select>
+      <input type="text" spellcheck="false" placeholder="G…" class="caja w-full px-3 py-2 font-mono text-xs" data-firmante-manual hidden />`;
+    const select = fila.querySelector<HTMLSelectElement>('[data-firmante-select]')!;
+    const manual = fila.querySelector<HTMLInputElement>('[data-firmante-manual]')!;
+    select.addEventListener('change', () => {
+      manual.hidden = select.value !== 'manual';
+      if (select.value === 'manual') manual.focus();
+      validar();
+    });
+    manual.addEventListener('input', validar);
+    firmantesEl.appendChild(fila);
+  }
+
+  function direccionesFirmantes(): string[] {
+    return [...firmantesEl.querySelectorAll<HTMLElement>('.grid')].map((fila) => {
+      const select = fila.querySelector<HTMLSelectElement>('[data-firmante-select]')!;
+      const manual = fila.querySelector<HTMLInputElement>('[data-firmante-manual]')!;
+      return (select.value === 'manual' ? manual.value : select.value).trim();
+    });
+  }
+
+  // ---------- Validación en vivo (mismos criterios que el constructor) ----------
+  function validar(): string[] {
+    const problemas: string[] = [];
+    const meta = aUnidades(entrada('meta').value);
+    const minimo = aUnidades(entrada('minimo').value);
+    const filas = Number(entrada('filas').value);
+    const columnas = Number(entrada('columnas').value);
+    const dias = Number(entrada('dias').value);
+
+    if (!entrada('nombre').value.trim()) problemas.push('Falta el nombre.');
+    if (meta === null || meta <= 0n) problemas.push('La meta tiene que ser un número mayor a 0 (hasta 7 decimales).');
+    if (minimo === null || minimo <= 0n) problemas.push('El aporte mínimo tiene que ser un número mayor a 0.');
+    if (!Number.isInteger(filas) || filas < 1 || !Number.isInteger(columnas) || columnas < 1) problemas.push('Filas y columnas tienen que ser enteros de al menos 1.');
+    if (!Number.isInteger(dias) || dias < 1) problemas.push('Los días tienen que ser un entero de al menos 1.');
+
+    const hitos = [...hitosEl.querySelectorAll<HTMLInputElement>('[data-hito]')].map((i) => aUnidades(i.value));
+    if (!hitos.length) problemas.push('Agregá al menos un hito.');
+    if (hitos.some((h) => h === null || h <= 0n)) problemas.push('Cada hito tiene que ser un número mayor a 0.');
+    const suma = hitos.reduce<bigint>((acc, h) => acc + (h ?? 0n), 0n);
+    const sumaEl = $('[data-suma-hitos]');
+    if (meta !== null && meta > 0n && hitos.length) {
+      const ok = suma === meta;
+      sumaEl.textContent = `Suma de hitos: ${aUsdcTexto(suma)} / ${aUsdcTexto(meta)} USDC`;
+      sumaEl.className = `m-0 text-sm font-bold ${ok ? 'text-ambar' : 'text-white/60'}`;
+      if (!ok) problemas.push(`Los hitos suman ${aUsdcTexto(suma)} y tienen que sumar exactamente la meta (${aUsdcTexto(meta)}).`);
+    }
+
+    if (meta !== null && minimo !== null && filas >= 1 && columnas >= 1 && minimo * BigInt(filas * columnas) < meta) {
+      problemas.push(`Mínimo × ladrillos (${aUsdcTexto(minimo * BigInt(filas * columnas))}) no alcanza la meta: subí el mínimo o la cantidad de ladrillos.`);
+    }
+
+    const restaurador = entrada('restaurador').value.trim();
+    if (!esDireccionValida(restaurador)) problemas.push('La dirección del restaurador no es válida (empieza con G, 56 caracteres).');
+
+    const firmantes = direccionesFirmantes();
+    if (firmantes.some((f) => !esDireccionValida(f))) problemas.push('Cada firmante tiene que ser una dirección válida (G…).');
+    if (new Set(firmantes).size !== 3) problemas.push('Los 3 firmantes tienen que ser distintos.');
+
+    erroresEl.innerHTML = '';
+    problemas.slice(0, 3).forEach((texto) => {
+      const p = document.createElement('p');
+      p.className = 'm-0';
+      p.textContent = `· ${texto}`;
+      erroresEl.appendChild(p);
+    });
+    $('[data-revisar]').toggleAttribute('disabled', problemas.length > 0);
+    return problemas;
+  }
+
+  form.addEventListener('input', validar);
+
+  // ---------- Confirmación y despliegue ----------
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (validar().length) return;
+    const resumen = $('[data-resumen]');
+    const hitos = [...hitosEl.querySelectorAll<HTMLInputElement>('[data-hito]')].map((i) => i.value.trim());
+    const firmantes = direccionesFirmantes();
+    resumen.innerHTML = '';
+    const lineas: [string, string][] = [
+      ['Nombre', entrada('nombre').value.trim()],
+      ['Meta', `${entrada('meta').value.trim()} USDC en ${hitos.length} hito(s): ${hitos.join(' + ')}`],
+      ['Pared', `${entrada('filas').value} × ${entrada('columnas').value} ladrillos, mínimo ${entrada('minimo').value} USDC`],
+      ['Duración', `${entrada('dias').value} días`],
+      ['Restaurador', abreviar(entrada('restaurador').value.trim())],
+      ['Firmantes', firmantes.map(abreviar).join(', ')],
+    ];
+    lineas.forEach(([k, v]) => {
+      const p = document.createElement('p');
+      p.className = 'm-0';
+      p.innerHTML = `<strong class="text-white/60"></strong> <span></span>`;
+      p.querySelector('strong')!.textContent = `${k}: `;
+      p.querySelector('span')!.textContent = v;
+      resumen.appendChild(p);
+    });
+    $('[data-confirmacion]').hidden = false;
+    form.hidden = true;
+    $('[data-confirmacion]').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+
+  $('[data-cancelar]').addEventListener('click', () => {
+    $('[data-confirmacion]').hidden = true;
+    form.hidden = false;
+  });
+
+  $('[data-confirmar]').addEventListener('click', async () => {
+    const boton = $('[data-confirmar]') as HTMLButtonElement;
+    const estado = $('[data-estado-despliegue]');
+    boton.disabled = true;
+    estado.textContent = 'Desplegando la campaña en la red de prueba… puede tardar unos segundos.';
+    try {
+      const res = await postJSON<{ id: string; hash: string }>('/api/admin/campanias', {
+        nombre: entrada('nombre').value.trim(),
+        metaUsdc: entrada('meta').value.trim(),
+        hitosUsdc: [...hitosEl.querySelectorAll<HTMLInputElement>('[data-hito]')].map((i) => i.value.trim()),
+        filas: Number(entrada('filas').value),
+        columnas: Number(entrada('columnas').value),
+        aporteMinimoUsdc: entrada('minimo').value.trim(),
+        dias: Number(entrada('dias').value),
+        restaurador: entrada('restaurador').value.trim(),
+        firmantes: direccionesFirmantes(),
+      });
+      estado.textContent = '';
+      $('[data-confirmacion]').hidden = true;
+      $('[data-exito]').hidden = false;
+      $('[data-exito-id]').textContent = res.id;
+      const enlace = $('[data-exito-tx]') as HTMLAnchorElement;
+      enlace.href = urlTx(res.hash);
+      ($('[data-usar-nueva]') as HTMLElement).dataset.id = res.id;
+      toast('Campaña desplegada.', 'exito');
+      cargar();
+    } catch (err) {
+      estado.textContent = (err as Error).message;
+      toast((err as Error).message, 'error');
+    } finally {
+      boton.disabled = false;
+    }
+  });
+
+  $('[data-usar-nueva]').addEventListener('click', async (e) => {
+    const boton = e.currentTarget as HTMLButtonElement;
+    boton.disabled = true;
+    try {
+      await postJSON('/api/admin/campania-activa', { id: boton.dataset.id });
+      toast('Ahora la web muestra la campaña nueva.', 'exito');
+      cargar();
+    } catch (err) {
+      toast((err as Error).message, 'error');
+      boton.disabled = false;
+    }
+  });
+
+  // ---------- Arranque ----------
+  $('[data-recargar]').addEventListener('click', cargar);
+  agregarHito();
+  agregarHito();
+  for (let i = 0; i < 3; i++) agregarSelectorFirmante();
+  validar();
+
+  function inicializar() {
+    cargar();
+    getJSON<{ firmantes: FirmanteConocido[] }>('/api/admin/firmantes')
+      .then((d) => {
+        conocidos = d.firmantes ?? [];
+        firmantesEl.innerHTML = '';
+        for (let i = 0; i < 3; i++) agregarSelectorFirmante();
+        validar();
+      })
+      .catch(() => {});
+  }
+
+  document.addEventListener('admin:sesion', inicializar);
+</script>

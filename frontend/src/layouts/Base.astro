@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import ConectarWallet from '../components/wallet/ConectarWallet.astro';
 import Toast from '../components/ui/Toast.astro';
+import { ADMIN_WEB } from 'astro:env/server';
 import { usandoEnsayo } from '../contracts/config';
 
 interface Props {
@@ -15,6 +16,7 @@ const {
   descripcion = 'Adoptá un ladrillo, dejá un recuerdo y ayudá a restaurar el mural del barrio.',
   completo = false,
 } = Astro.props;
+const adminActivo = ADMIN_WEB;
 const ruta = Astro.url.pathname.replace(/\/$/, '') || '/';
 const enlaces = [
   { href: '/', texto: 'Inicio' },
@@ -79,7 +81,7 @@ const enlaces = [
         <p class="m-0">Memoria del barrio, ladrillo por ladrillo · Construido en Stellar</p>
         <nav class="m-0 mt-2 flex flex-wrap justify-center gap-x-5 gap-y-1" aria-label="Enlaces del pie">
           {
-            [...enlaces, { href: '/guardianes', texto: 'Guardianes' }].map((e) => (
+            [...enlaces, { href: '/guardianes', texto: 'Guardianes' }, ...(adminActivo ? [{ href: '/admin', texto: 'Admin' }] : [])].map((e) => (
               <a href={e.href} class="inline-flex min-h-[44px] items-center text-white/50 no-underline transition-colors hover:text-ambar md:min-h-0">
                 {e.texto}
               </a>

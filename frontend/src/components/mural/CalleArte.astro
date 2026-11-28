@@ -5,7 +5,7 @@ interface Props {
 
 const { class: clase } = Astro.props;
 const obras = [
-  { id: 'mona', texto: 'Mona Lisa' },
+  { id: 'fader', texto: 'La mazamorra' },
   { id: 'noche', texto: 'Noche estrellada' },
   { id: 'mural', texto: 'Mural del barrio' },
 ];
@@ -17,8 +17,8 @@ const obras = [
     <slot />
     <div class="cartel aparecer w-full max-w-sm shrink-0 rounded-xl !px-5 !pb-5 !pt-8">
       <p class="etiqueta m-0">Formando</p>
-      <p class="obra-titulo neon m-0 mt-1 font-display text-4xl text-ambar">La Gioconda</p>
-      <p class="obra-autor m-0 text-sm text-white/60">Leonardo da Vinci · 1503</p>
+      <p class="obra-titulo neon m-0 mt-1 font-display text-4xl text-ambar">La mazamorra</p>
+      <p class="obra-autor m-0 text-sm text-white/60">Fernando Fader · 1927</p>
       <div class="barra-ladrillos mt-3 overflow-hidden rounded-md"><div class="obra-avance w-0"></div></div>
       <div class="mt-4 grid grid-cols-3 gap-2 text-xs font-bold uppercase">
         {
@@ -27,8 +27,8 @@ const obras = [
               type="button"
               data-obra={o.id}
               class="obra-btn presionable cursor-pointer rounded-md px-2 py-2"
-              aria-pressed={o.id === 'mona' ? 'true' : 'false'}
-              aria-current={o.id === 'mona' ? 'true' : undefined}
+              aria-pressed={o.id === 'fader' ? 'true' : 'false'}
+              aria-current={o.id === 'fader' ? 'true' : undefined}
             >
               {o.texto}
             </button>
@@ -52,7 +52,7 @@ const obras = [
   import obras from './obras.json';
 
   type Tres = typeof import('three');
-  type Clave = 'mona' | 'noche' | 'mural';
+  type Clave = 'fader' | 'noche' | 'mural';
   interface Pose {
     p: Vector3;
     q: Quaternion;
@@ -60,11 +60,11 @@ const obras = [
   }
 
   const INFO: Record<Clave, { titulo: string; autor: string }> = {
-    mona: { titulo: 'La Gioconda', autor: 'Leonardo da Vinci · 1503' },
+    fader: { titulo: 'La mazamorra', autor: 'Fernando Fader · 1927' },
     noche: { titulo: 'La noche estrellada', autor: 'Vincent van Gogh · 1889' },
     mural: { titulo: 'Mural del barrio', autor: 'Pintado por los vecinos · 2026' },
   };
-  const ORDEN: Clave[] = ['mona', 'noche', 'mural'];
+  const ORDEN: Clave[] = ['fader', 'noche', 'mural'];
   const DURACION_TOTAL = 13500;
   const PAUSA = 8000;
   const PISO = -6;
@@ -218,7 +218,7 @@ const obras = [
       hacia.push(a);
     }
 
-    let obraActual: Clave = 'mona';
+    let obraActual: Clave = 'fader';
     let comienzo = 0;
     let automatico = true;
     let manualPausado = false;
@@ -235,7 +235,7 @@ const obras = [
       marcarObra(botones, obra);
       const lista = destinos(obra);
       const orden = mezclar(N);
-      const enObra = obra === 'mona' ? obras.mona.c * obras.mona.r : N;
+      const enObra = obra === 'fader' ? obras.fader.c * obras.fader.r : N;
       for (let k = 0; k < N; k++) {
         const i = orden[k];
         const d = lista[k];
@@ -356,7 +356,7 @@ const obras = [
     const giro = new THREE.Quaternion();
     const euler = new THREE.Euler();
     const suave = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
-    formar('mona');
+    formar('fader');
 
     function paso() {
       const ahora = performance.now();

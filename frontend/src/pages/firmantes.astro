@@ -12,9 +12,21 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
 
   <p class="resumen" data-resumen>Cargando…</p>
   <p class="aviso" data-aviso hidden></p>
+  <p class="cta-clave-wrap" data-cta-clave-wrap hidden>
+    <button type="button" class="cta-clave" data-usar-clave>¿Sos firmante? Usá tu clave</button>
+  </p>
   <p class="estado" data-estado role="status" hidden></p>
   <p class="error" data-error role="alert" hidden></p>
   <p class="exito" data-exito role="status" hidden></p>
+
+  <section class="panel-demo" data-demo-panel hidden aria-labelledby="titulo-demo">
+    <h2 id="titulo-demo" class="titulo-demo">Firmar como firmante de demo</h2>
+    <p class="nota-demo">Modo demo: las claves de los firmantes están en el servidor. Solo para testnet.</p>
+    <div data-demo-contenido></div>
+    <p class="estado" data-demo-estado role="status" aria-live="polite" hidden></p>
+    <p class="error" data-demo-error role="alert" hidden></p>
+    <p class="exito" data-demo-exito role="status" aria-live="polite" hidden></p>
+  </section>
 
   <ol class="hitos" data-hitos></ol>
 
@@ -52,6 +64,18 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
 
   let direccion: string | null = null;
   let ocupado = false;
+  let ocupadoDemo = false;
+
+  interface FirmanteDemo {
+    numero: number;
+    direccion: string;
+  }
+  let demoActivo = false;
+  let demoFirmantes: FirmanteDemo[] = [];
+
+  function toast(mensaje: string, tipo: 'exito' | 'error') {
+    window.dispatchEvent(new CustomEvent('pv:toast', { detail: { mensaje, tipo } }));
+  }
 
   function mostrar(sel: string, contenido: string | null, html = false) {
     const el = $(sel);
@@ -99,7 +123,9 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
         `Estado: ${ETIQUETA_CAMPANIA[c.estado]} · Recaudado ${formatearUsdc(c.recaudado)} de ${formatearUsdc(c.meta)}`,
       );
       mostrar('[data-aviso]', aviso(c, esFirmante));
+      $('[data-cta-clave-wrap]').hidden = !(direccion && !esFirmante);
       lista.innerHTML = hitos.map((h) => filaHito(h, c, esFirmante)).join('');
+      pintarDemo(c, hitos);
       $('[data-firmantes]').innerHTML = firmantes
         .map((f) => `<li><code>${abreviar(f)}</code>${f === direccion ? ' <strong>(vos)</strong>' : ''}</li>`)
         .join('');
@@ -107,6 +133,96 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
       mostrar('[data-error]', traducirError(e));
     }
   }
+
+  function pintarDemo(c: Campania, hitos: Hito[]) {
+    const panel = $('[data-demo-panel]');
+    if (!demoActivo) {
+      panel.hidden = true;
+      return;
+    }
+    panel.hidden = false;
+    const contenido = $('[data-demo-contenido]');
+    const indice = c.hitoActual;
+    const hito = hitos[indice];
+    const listaFirmantes = demoFirmantes
+      .map((f) => `<li>Firmante ${f.numero} · <code>${abreviar(f.direccion)}</code></li>`)
+      .join('');
+    if (!hito || c.estado !== 'Financiada') {
+      contenido.innerHTML = `<ul class="lista-demo">${listaFirmantes}</ul>`;
+      return;
+    }
+    const aprobaron = demoFirmantes.filter((f) => hito.aprobadoPor.includes(f.direccion));
+    const faltan = demoFirmantes.filter((f) => !hito.aprobadoPor.includes(f.direccion));
+    const quienes = aprobaron.length
+      ? `Ya aprobaron: ${aprobaron.map((f) => `Firmante ${f.numero}`).join(', ')}.`
+      : 'Todavía no aprobó ningún firmante.';
+    const botones = faltan
+      .map(
+        (f) =>
+          `<button type="button" class="boton-ladrillo mt-3 cursor-pointer px-5 py-3 font-sans text-sm font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60" data-aprobar-demo="${f.numero}" data-hito-demo="${indice}" ${ocupadoDemo ? 'disabled' : ''}>Aprobar como Firmante ${f.numero}</button>`,
+      )
+      .join(' ');
+    contenido.innerHTML = `
+      <ul class="lista-demo">${listaFirmantes}</ul>
+      <p class="hito-demo"><strong>Hito ${indice + 1}</strong> · ${formatearUsdc(hito.monto)} — ${quienes}</p>
+      <div class="botones-demo">${botones}</div>`;
+  }
+
+  $('[data-demo-contenido]').addEventListener('click', async (e) => {
+    const boton = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-aprobar-demo]');
+    if (!boton || ocupadoDemo) return;
+    const numero = Number(boton.dataset.aprobarDemo);
+    const hito = Number(boton.dataset.hitoDemo);
+    ocupadoDemo = true;
+    mostrar('[data-demo-error]', null);
+    mostrar('[data-demo-exito]', null);
+    mostrar('[data-demo-estado]', 'Confirmando la aprobación, unos segundos…');
+    boton.disabled = true;
+    try {
+      const respuesta = await fetch('/api/firmar-demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firmante: numero, hito }),
+      });
+      const cuerpo = (await respuesta.json().catch(() => ({}))) as { hash?: string; error?: string };
+      if (!respuesta.ok) throw new Error(cuerpo.error || 'No se pudo registrar la aprobación.');
+      const hitoActualizado = (await datos.obtenerHitos())[hito];
+      const texto =
+        hitoActualizado.estado === 'Pagado'
+          ? `¡Hito ${hito + 1} liberado! Se transfirieron ${formatearUsdc(hitoActualizado.monto)} al restaurador.`
+          : `Aprobación registrada como Firmante ${numero}. Falta ${APROBACIONES_NECESARIAS - hitoActualizado.aprobadoPor.length} aprobación más para liberar el hito.`;
+      const enlace =
+        cuerpo.hash && esTxReal(cuerpo.hash)
+          ? ` <a href="${urlTransaccion(cuerpo.hash)}" target="_blank" rel="noopener">Ver el comprobante público</a>`
+          : '';
+      mostrar('[data-demo-exito]', texto + enlace, true);
+      toast('Aprobación registrada', 'exito');
+    } catch (err) {
+      const mensaje = traducirError(err);
+      mostrar('[data-demo-error]', mensaje);
+      toast(mensaje, 'error');
+    } finally {
+      ocupadoDemo = false;
+      mostrar('[data-demo-estado]', null);
+      await render();
+    }
+  });
+
+  async function cargarDemo() {
+    try {
+      const respuesta = await fetch('/api/firmar-demo');
+      if (!respuesta.ok) return;
+      const cuerpo = (await respuesta.json()) as { activo?: boolean; firmantes?: FirmanteDemo[] };
+      demoActivo = !!cuerpo.activo;
+      demoFirmantes = cuerpo.firmantes ?? [];
+    } catch {
+      demoActivo = false;
+    }
+  }
+
+  $('[data-usar-clave]').addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('pv:abrir-importar-clave'));
+  });
 
   lista.addEventListener('click', async (e) => {
     const boton = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-aprobar]');
@@ -133,6 +249,8 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
       await render();
     }
   });
+
+  void cargarDemo().then(() => render());
 
   alCambiarWallet((nueva) => {
     direccion = nueva;
@@ -204,5 +322,58 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
   }
   .firmantes code {
     font-size: 0.9rem;
+  }
+  .cta-clave-wrap {
+    margin: 0.5rem 0 0;
+  }
+  .cta-clave {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: #38e1ff;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .cta-clave:hover {
+    color: #ffb547;
+  }
+  .panel-demo {
+    background: #140f1e;
+    border: 2px solid #241c31;
+    box-shadow: 6px 6px 0 #000;
+    border-radius: 0.75rem;
+    padding: var(--espacio, 1rem);
+    margin: var(--espacio, 1rem) 0;
+  }
+  .titulo-demo {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+  .nota-demo {
+    font-size: 0.8rem;
+    color: rgb(255 255 255 / 0.55);
+    margin: 0.3rem 0 0.8rem;
+  }
+  .panel-demo :global(.lista-demo) {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.9rem;
+    color: rgb(255 255 255 / 0.8);
+  }
+  .panel-demo :global(.hito-demo) {
+    margin: 0 0 0.4rem;
+  }
+  .panel-demo :global(.botones-demo) {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .panel-demo :global(.botones-demo .boton-ladrillo) {
+    margin-top: 0.5rem;
   }
 </style>

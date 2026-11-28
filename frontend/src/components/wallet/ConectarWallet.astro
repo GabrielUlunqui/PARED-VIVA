@@ -6,6 +6,8 @@
     aria-haspopup="dialog"
     aria-expanded="false"
     aria-controls="wallet-opciones"
+    aria-label="Conectá tu billetera para donar"
+    title="Conectá tu billetera para donar"
   >
     Conectar wallet
   </button>
@@ -28,11 +30,11 @@
 
   <div id="wallet-opciones" class="panel cartel" role="dialog" aria-label="Elegí una wallet" hidden>
     <span class="etiqueta">Elegí una wallet</span>
-    <button type="button" class="opcion" data-opcion-freighter>
+    <button type="button" class="opcion presionable" data-opcion-freighter>
       <strong>Freighter</strong>
       <small>Extensión del navegador, en Testnet.</small>
     </button>
-    <button type="button" class="opcion" data-opcion-prueba>
+    <button type="button" class="opcion presionable" data-opcion-prueba>
       <strong data-prueba-titulo>Crear wallet de prueba</strong>
       <small data-prueba-detalle></small>
     </button>
@@ -47,7 +49,7 @@
 
     <div class="direccion">
       <code data-direccion-completa></code>
-      <button type="button" class="copiar" data-copiar>Copiar</button>
+      <button type="button" class="copiar presionable" data-copiar>Copiar</button>
     </div>
 
     <dl class="saldos">
@@ -62,8 +64,8 @@
     </dl>
 
     <p class="nota" data-nota hidden></p>
-    <button type="button" class="boton-ladrillo fondear" data-fondear hidden>Fondear con Friendbot</button>
-    <button type="button" class="boton-ladrillo fondear" data-pedir-usdc hidden></button>
+    <button type="button" class="boton-ladrillo fondear presionable" data-fondear hidden>Fondear con Friendbot</button>
+    <button type="button" class="boton-ladrillo fondear presionable" data-pedir-usdc hidden></button>
     <small class="pista" data-pista-prueba hidden>
       La clave de esta wallet vive solo en este navegador. Usala únicamente para probar en testnet.
     </small>
@@ -267,8 +269,13 @@
 
   copiar.addEventListener('click', async () => {
     if (!direccion) return;
-    await navigator.clipboard.writeText(direccion);
-    copiar.textContent = '¡Copiada!';
+    try {
+      await navigator.clipboard.writeText(direccion);
+      window.dispatchEvent(new CustomEvent('pv:toast', { detail: { mensaje: 'Dirección copiada al portapapeles', tipo: 'exito' } }));
+      copiar.textContent = '¡Copiada!';
+    } catch {
+      window.dispatchEvent(new CustomEvent('pv:toast', { detail: { mensaje: 'No se pudo copiar la dirección', tipo: 'error' } }));
+    }
     setTimeout(() => (copiar.textContent = 'Copiar'), 1500);
   });
 
@@ -332,7 +339,7 @@
     border: 1px solid var(--color-secundario);
     background: var(--color-secundario);
     color: white;
-    border-radius: var(--radio);
+    border-radius: var(--radius-md, 0.5rem);
     padding: 0.5rem 1rem;
     font: inherit;
     cursor: pointer;
@@ -357,6 +364,7 @@
     padding: 0.35rem 0.75rem;
     background: var(--color-muro);
     border: 2px solid var(--color-junta);
+    border-radius: var(--radius-full, 999px);
     color: var(--color-texto);
     font: inherit;
     text-align: left;
@@ -444,6 +452,7 @@
     padding: 0.5rem 0.6rem;
     background: var(--color-noche);
     border: 1px solid var(--color-junta);
+    border-radius: var(--radius-md, 0.5rem);
   }
   .direccion code {
     flex: 1;
@@ -455,6 +464,7 @@
   .desconectar {
     background: none;
     border: 1px solid var(--color-junta);
+    border-radius: var(--radius-md, 0.5rem);
     color: var(--color-tenue);
     font: inherit;
     font-size: 0.72rem;
@@ -479,6 +489,7 @@
     background: var(--color-muro);
     border: 2px solid var(--color-junta);
     border-top-width: 4px;
+    border-radius: var(--radius-md, 0.5rem);
   }
   .saldo-usdc {
     border-top-color: var(--color-ambar);
@@ -534,6 +545,7 @@
     padding: 0.7rem 0.8rem;
     background: var(--color-muro);
     border: 2px solid var(--color-junta);
+    border-radius: var(--radius-md, 0.5rem);
     color: var(--color-texto);
     font: inherit;
     text-align: left;

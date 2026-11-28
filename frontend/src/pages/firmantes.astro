@@ -30,8 +30,6 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
 
   <ol class="hitos" data-hitos></ol>
 
-  <h2>Firmantes</h2>
-  <ul class="firmantes text-white/80" data-firmantes></ul>
   </div>
 </Base>
 
@@ -126,9 +124,6 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
       $('[data-cta-clave-wrap]').hidden = !(direccion && !esFirmante);
       lista.innerHTML = hitos.map((h) => filaHito(h, c, esFirmante)).join('');
       pintarDemo(c, hitos);
-      $('[data-firmantes]').innerHTML = firmantes
-        .map((f) => `<li><code>${abreviar(f)}</code>${f === direccion ? ' <strong>(vos)</strong>' : ''}</li>`)
-        .join('');
     } catch (e) {
       mostrar('[data-error]', traducirError(e));
     }
@@ -319,9 +314,6 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
   .hitos :global(.nota) {
     font-size: 0.9rem;
     opacity: 0.8;
-  }
-  .firmantes code {
-    font-size: 0.9rem;
   }
   .cta-clave-wrap {
     margin: 0.5rem 0 0;

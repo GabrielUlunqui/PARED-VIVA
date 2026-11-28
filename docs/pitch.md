@@ -12,7 +12,7 @@ Una colecta en USDC para restaurar un mural de un barrio de Mendoza, donde cada 
 
 ## Slides
 
-1. **Portada:** "Pared Viva. Cada ladrillo hace arte". Fondo con la calle de noche y los ladrillos armando la Mona Lisa.
+1. **Portada:** "Pared Viva. Cada ladrillo hace arte". Fondo con la calle de noche y los ladrillos armando "La mazamorra" de Fernando Fader.
 2. **Problema:** foto del mural deteriorado. "El barrio quiere restaurarlo, pero nadie confía en una colecta."
 3. **Solución:** adoptás un ladrillo del mural digital, dejás un recuerdo y donás en USDC. Si no se llega a la meta, recuperás tu aporte.
 4. **Demo:** alguien de afuera del equipo dona en vivo desde la laptop y el ladrillo se pinta; con el QR, el público abre el mural en su celular.

@@ -41,6 +41,7 @@ const enlaces = [
     <title>{titulo ? `${titulo} · Pared Viva` : 'Pared Viva'}</title>
   </head>
   <body>
+    <a href="#contenido" class="salto-contenido">Saltar al contenido</a>
     <p class="aviso-testnet fixed inset-x-0 bottom-0 z-50 m-0 bg-ambar px-3 py-1 text-center text-xs font-bold text-black">
       Demo en Stellar testnet: sin dinero real, sin inversión ni rendimiento.{usandoEnsayo && ' · Campaña de ensayo'}
     </p>
@@ -68,7 +69,7 @@ const enlaces = [
         <ConectarWallet />
       </div>
     </header>
-    <main class:list={[{ completo }]}>
+    <main id="contenido" class:list={[{ completo }]}>
       <slot />
     </main>
     <footer class="mt-16 pb-6">
@@ -115,6 +116,22 @@ const enlaces = [
 </script>
 
 <style>
+  .salto-contenido {
+    position: absolute;
+    left: 1rem;
+    top: -3rem;
+    z-index: 70;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    background: var(--color-ambar);
+    color: var(--color-noche);
+    font-weight: 700;
+    text-decoration: none;
+    transition: top 0.15s;
+  }
+  .salto-contenido:focus {
+    top: 1rem;
+  }
   header :global(.conectar-wallet) {
     background: transparent;
     color: var(--color-rosa);

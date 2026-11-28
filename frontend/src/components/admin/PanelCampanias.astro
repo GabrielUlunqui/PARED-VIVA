@@ -175,15 +175,15 @@
           <div class="flex flex-wrap items-center gap-2">
             <h3 class="m-0 text-2xl text-white"></h3>
             ${activa ? '<span class="rounded-full bg-ambar px-2 py-0.5 text-xs font-bold uppercase text-noche">En la web</span>' : ''}
-            <span class="rounded-full border border-junta px-2 py-0.5 text-xs uppercase text-white/50"></span>
+            <span data-origen class="rounded-full border border-junta px-2 py-0.5 text-xs uppercase text-white/50"></span>
           </div>
-          <p class="m-0 text-sm text-white/70"></p>
-          <p class="m-0 font-mono text-xs text-white/50 break-all"></p>
+          <p data-estado class="m-0 text-sm text-white/70"></p>
+          <p data-id class="m-0 font-mono text-xs text-white/50 break-all"></p>
           <div class="acciones mt-1 flex flex-wrap gap-2"></div>`;
         tarjeta.querySelector('h3')!.textContent = c.nombre;
-        (tarjeta.querySelectorAll('span')[1] as HTMLElement).textContent = c.origen === 'config' ? 'original' : 'creada acá';
-        (tarjeta.querySelectorAll('p')[0] as HTMLElement).textContent = textoEstado(c);
-        (tarjeta.querySelectorAll('p')[1] as HTMLElement).textContent = c.id;
+        tarjeta.querySelector<HTMLElement>('[data-origen]')!.textContent = c.origen === 'config' ? 'original' : 'creada acá';
+        tarjeta.querySelector<HTMLElement>('[data-estado]')!.textContent = textoEstado(c);
+        tarjeta.querySelector<HTMLElement>('[data-id]')!.textContent = c.id;
         if (!activa) {
           const boton = document.createElement('button');
           boton.type = 'button';

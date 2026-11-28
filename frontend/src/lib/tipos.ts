@@ -72,6 +72,14 @@ export function errorMontoUsdc(texto: string): string | null {
   return null;
 }
 
+/** Monto USDC como texto editable para inputs (coma decimal, sin ceros de más ni sufijo). */
+export function usdcATexto(monto: bigint): string {
+  const entero = (monto / UNIDAD_USDC).toString();
+  const decimales = (monto % UNIDAD_USDC).toString().padStart(DECIMALES_USDC, '0').replace(/0+$/, '');
+  return decimales ? `${entero},${decimales}` : entero;
+}
+
+
 export function formatearUsdc(monto: bigint): string {
   if (monto > 0n && monto < 100_000n) {
     // Menos de un centavo: mostrar decimales significativos en vez de "0,00".

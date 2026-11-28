@@ -104,7 +104,7 @@ const MONTO_INICIAL = '5';
   import { conectarYAvisar } from '../../lib/stellar/sesion';
   import { abreviar, conectarPrueba, direccionActual } from '../../lib/stellar/wallet';
   import type { EtapaPrueba } from '../../lib/stellar/wallet-prueba';
-  import { errorMontoUsdc, formatearUsdc, parsearUsdc } from '../../lib/tipos';
+  import { errorMontoUsdc, formatearUsdc, parsearUsdc, usdcATexto } from '../../lib/tipos';
 
   const modal = document.getElementById('modal-donar') as HTMLDialogElement;
   const $ = <T extends HTMLElement>(sel: string) => modal.querySelector(sel) as T;
@@ -215,6 +215,12 @@ const MONTO_INICIAL = '5';
     enviar.disabled = !minimoCargado;
   }
 
+  function aplicarMinimo() {
+    sugeridos.forEach((b) => (b.hidden = parsearUsdc(b.dataset.monto!)! < minimo));
+    const actual = montoActual();
+    if (actual === null || actual < minimo) montoInput.value = usdcATexto(minimo);
+  }
+
   function huella(): string {
     return JSON.stringify([texto.value, alias.value, imagen.files?.[0]?.name ?? '', imagen.files?.[0]?.size ?? 0]);
   }
@@ -234,8 +240,15 @@ const MONTO_INICIAL = '5';
     [montoInput, texto, imagen, consentimiento].forEach((c) => marcarCampo(c, false));
   }
 
+  function aplicarMinimo() {
+    sugeridos.forEach((b) => (b.hidden = parsearUsdc(b.dataset.monto!)! < minimo));
+    const inicial = montoActual();
+    if (inicial === null || inicial < minimo) montoInput.value = usdcATexto(minimo);
+  }
+
   function reiniciar() {
     form.reset();
+    aplicarMinimo();
     form.hidden = false;
     exito.hidden = true;
     exito.classList.remove('aparecer');
@@ -249,6 +262,7 @@ const MONTO_INICIAL = '5';
     mostrar(onboardingError, null);
     limpiarInvalidos();
     enviar.disabled = false;
+    aplicarMinimo();
     actualizarMonto();
     actualizarEnvio();
   }
@@ -361,6 +375,7 @@ const MONTO_INICIAL = '5';
     try {
       minimo = (await datos.obtenerCampania()).aporteMinimo;
       $('[data-donar-minimo]').textContent = formatearUsdc(minimo);
+      aplicarMinimo();
     } finally {
       minimoCargado = true;
       actualizarEnvio();

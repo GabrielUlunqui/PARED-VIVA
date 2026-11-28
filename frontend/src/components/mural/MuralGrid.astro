@@ -1,4 +1,34 @@
-<div class="cartel !p-3 !pt-7 md:!p-5 md:!pt-9">
+<div class="cartel rounded-xl !p-3 !pt-7 md:!p-5 md:!pt-9" data-mural-caja>
+  <div class="mb-4 flex flex-wrap items-end justify-between gap-x-5 gap-y-3">
+    <form class="ir-ladrillo" data-ir-ladrillo>
+      <label for="ir-ladrillo-numero" class="text-sm font-bold">Ir al ladrillo N°</label>
+      <div class="mt-1 flex items-stretch gap-2">
+        <input
+          id="ir-ladrillo-numero"
+          class="rounded-md"
+          name="ladrillo"
+          type="number"
+          inputmode="numeric"
+          min="0"
+          placeholder="0"
+          aria-describedby="ir-ladrillo-ayuda ir-ladrillo-error"
+          disabled
+        />
+        <button type="submit" class="presionable rounded-md" disabled>Ir</button>
+      </div>
+      <small id="ir-ladrillo-ayuda" class="mt-1 block text-white/60">Usá el número del ladrillo; después podés activarlo con Enter.</small>
+      <p id="ir-ladrillo-error" class="mensaje-error m-0 mt-1 text-sm" role="alert" hidden></p>
+    </form>
+
+    <div class="zoom flex items-center gap-2" role="group" aria-label="Zoom del mural">
+      <button type="button" class="presionable rounded-md" data-zoom-out aria-label="Alejar el mural">−</button>
+      <span data-zoom-nivel aria-live="polite">100%</span>
+      <button type="button" class="presionable rounded-md" data-zoom-in aria-label="Acercar el mural">+</button>
+    </div>
+  </div>
+
+  <p data-mural-aviso class="aviso-campania caja m-0 mb-4 rounded-md p-3 text-sm text-white/80" hidden></p>
+
   <div class="mural-marco overflow-x-auto">
     <div id="mural" class="mural relative" aria-label="Mural de ladrillos" role="group" aria-busy="true">
       <p class="cargando m-0 p-10 text-center text-white/50">Levantando la pared…</p>
@@ -7,28 +37,94 @@
   <div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs uppercase tracking-wider text-white/60">
     <span class="flex items-center gap-2"><span class="muestra libre"></span>Libre</span>
     <span class="flex items-center gap-2"><span class="muestra adoptado"></span>Adoptado</span>
-    <span class="ml-auto normal-case tracking-normal text-white/40">Tocá un ladrillo libre para adoptarlo</span>
+    <span class="ml-auto normal-case tracking-normal text-white/60" data-instruccion>Tocá un ladrillo libre para adoptarlo</span>
   </div>
-  <div id="mural-tooltip" class="mural-tooltip caja" role="tooltip" hidden></div>
+  <div id="mural-tooltip" class="mural-tooltip caja rounded-md" role="tooltip" hidden></div>
 </div>
 
 <script>
   import { datos } from '../../lib/datos';
   import { emitir, escuchar } from '../../lib/eventos';
+  import { formatearFecha } from '../../lib/formato';
   import { leerRecuerdo } from '../../lib/ipfs';
-  import type { Ladrillo } from '../../lib/tipos';
+  import type { EstadoCampania, Ladrillo } from '../../lib/tipos';
 
-  const mural = document.getElementById('mural') as HTMLDivElement;
-  const tooltip = document.getElementById('mural-tooltip') as HTMLDivElement;
+  const raiz = document.querySelector('[data-mural-caja]') as HTMLElement;
+  const mural = raiz.querySelector('#mural') as HTMLDivElement;
+  const tooltip = raiz.querySelector('#mural-tooltip') as HTMLDivElement;
+  const aviso = raiz.querySelector('[data-mural-aviso]') as HTMLElement;
+  const instruccion = raiz.querySelector('[data-instruccion]') as HTMLElement;
+  const formulario = raiz.querySelector('[data-ir-ladrillo]') as HTMLFormElement;
+  const entrada = formulario.querySelector('input') as HTMLInputElement;
+  const botonIr = formulario.querySelector('button') as HTMLButtonElement;
+  const errorIr = raiz.querySelector('#ir-ladrillo-error') as HTMLElement;
+  const zoomNivel = raiz.querySelector('[data-zoom-nivel]') as HTMLElement;
+  const zoomIn = raiz.querySelector('[data-zoom-in]') as HTMLButtonElement;
+  const zoomOut = raiz.querySelector('[data-zoom-out]') as HTMLButtonElement;
+
   const celdas = new Map<number, HTMLButtonElement>();
   const ocupados = new Map<number, Ladrillo>();
   const alias = new Map<number, Promise<string>>();
 
-  const fecha = (s: number) => new Date(s * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+  const fecha = (s: number) => formatearFecha(s, 'corta');
+  const terminadaConExito = (estado: EstadoCampania) => estado === 'Financiada' || estado === 'Completada';
+
+  let columnas = 30;
+  let filas = 20;
+  let total = 0;
+  let activo = 0;
+  let estadoCampania: EstadoCampania = 'Activa';
+  let zoom = matchMedia('(max-width: 640px)').matches ? 1.6 : 1;
+  const ZOOM_MIN = 0.8;
+  const ZOOM_MAX = 2.6;
+  const SALTO_FILAS = 5;
 
   function aliasDe(l: Ladrillo) {
     if (!alias.has(l.id)) alias.set(l.id, leerRecuerdo(l.recuerdoCid).then((r) => r.alias ?? 'Anónimo', () => 'Anónimo'));
     return alias.get(l.id)!;
+  }
+
+  function actualizarTabstops() {
+    celdas.forEach((celda, id) => {
+      celda.tabIndex = id === activo ? 0 : -1;
+    });
+  }
+
+  function actualizarAccesibilidad(id: number) {
+    const celda = celdas.get(id);
+    if (!celda) return;
+    const l = ocupados.get(id);
+    if (l) {
+      celda.setAttribute('aria-label', `Ladrillo #${id}, adoptado. Ver su recuerdo`);
+      celda.removeAttribute('aria-disabled');
+      void aliasDe(l).then((nombre) => {
+        if (ocupados.get(id) !== l) return;
+        celda.setAttribute('aria-label', `Ladrillo #${id}, adoptado por ${nombre} el ${fecha(l.fecha)}. Ver su recuerdo`);
+      });
+    } else {
+      const terminada = estadoCampania !== 'Activa';
+      celda.setAttribute('aria-label', terminada ? `Ladrillo #${id}, libre. La campaña terminó` : `Ladrillo #${id}, libre. Adoptalo`);
+      if (terminada) celda.setAttribute('aria-disabled', 'true');
+      else celda.removeAttribute('aria-disabled');
+    }
+  }
+
+  function actualizarEstadoCampania(estado: EstadoCampania) {
+    estadoCampania = estado;
+    if (terminadaConExito(estado)) {
+      aviso.textContent = '¡Llegamos a la meta, gracias! Los ladrillos adoptados siguen abiertos para leer sus recuerdos.';
+      aviso.hidden = false;
+      instruccion.textContent = 'La colecta terminó. Los recuerdos siguen disponibles';
+    } else if (estado === 'Fallida') {
+      aviso.innerHTML = 'No llegamos a la meta: podés recuperar tu aporte en <a href="/mi-aporte">Mi aporte</a>.';
+      aviso.hidden = false;
+      instruccion.textContent = 'La colecta terminó. Los recuerdos siguen disponibles';
+    } else {
+      aviso.hidden = true;
+      aviso.textContent = '';
+      instruccion.textContent = 'Tocá un ladrillo libre para adoptarlo';
+    }
+    celdas.forEach((_, id) => actualizarAccesibilidad(id));
   }
 
   function pintar(l: Ladrillo, animar = false) {
@@ -36,12 +132,17 @@
     const celda = celdas.get(l.id);
     if (!celda) return;
     celda.classList.add('adoptado');
-    celda.setAttribute('aria-label', `Ladrillo #${l.id}, adoptado. Ver su recuerdo`);
+    actualizarAccesibilidad(l.id);
     if (animar) {
       celda.classList.remove('recien');
       void celda.offsetWidth;
       celda.classList.add('recien');
     }
+  }
+
+  function ocultarTooltip(celda: HTMLButtonElement) {
+    tooltip.hidden = true;
+    celda.removeAttribute('aria-describedby');
   }
 
   async function mostrarTooltip(celda: HTMLButtonElement, id: number) {
@@ -52,10 +153,12 @@
     tooltip.style.top = `${r.top - padre.top}px`;
     const l = ocupados.get(id);
     tooltip.dataset.id = String(id);
+    const textoLibre = estadoCampania === 'Activa' ? 'Adoptá este ladrillo' : 'La campaña terminó';
     tooltip.innerHTML = l
       ? `<strong>Ladrillo #${id}</strong><span>Cargando…</span>`
-      : `<strong>Ladrillo #${id}</strong><span class="libre">Adoptá este ladrillo</span>`;
+      : `<strong>Ladrillo #${id}</strong><span class="libre">${textoLibre}</span>`;
     tooltip.hidden = false;
+    celda.setAttribute('aria-describedby', 'mural-tooltip');
     if (l) {
       const nombre = await aliasDe(l);
       if (tooltip.dataset.id !== String(id)) return;
@@ -64,36 +167,135 @@
     }
   }
 
+  function activarLadrillo(id: number) {
+    if (ocupados.has(id)) window.location.href = `/ladrillo/${id}`;
+    else if (estadoCampania === 'Activa') emitir('pv:ladrillo-seleccionado', { id });
+  }
+
+  function enfocar(id: number) {
+    activo = Math.max(0, Math.min(total - 1, id));
+    actualizarTabstops();
+    const celda = celdas.get(activo);
+    if (!celda) return;
+    celda.focus({ preventScroll: true });
+    celda.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+
+  function moverDesde(id: number, tecla: string, ctrl = false): number | null {
+    const fila = Math.floor(id / columnas);
+    const columna = id % columnas;
+    if (ctrl && tecla === 'Home') return 0;
+    if (ctrl && tecla === 'End') return total - 1;
+    switch (tecla) {
+      case 'ArrowLeft':
+        return columna > 0 ? id - 1 : null;
+      case 'ArrowRight':
+        return columna < columnas - 1 ? id + 1 : null;
+      case 'ArrowUp':
+        return fila > 0 ? id - columnas : null;
+      case 'ArrowDown':
+        return fila < filas - 1 ? id + columnas : null;
+      case 'Home':
+        return fila * columnas;
+      case 'End':
+        return fila * columnas + columnas - 1;
+      case 'PageUp':
+        return Math.max(0, fila - SALTO_FILAS) * columnas + columna;
+      case 'PageDown':
+        return Math.min(filas - 1, fila + SALTO_FILAS) * columnas + columna;
+      default:
+        return null;
+    }
+  }
+
+  function aplicarZoom() {
+    mural.style.minWidth = `${Math.round(620 * zoom)}px`;
+    zoomNivel.textContent = `${Math.round(zoom * 100)}%`;
+    zoomOut.disabled = zoom <= ZOOM_MIN;
+    zoomIn.disabled = zoom >= ZOOM_MAX;
+  }
+
+  function cambiarZoom(delta: number) {
+    zoom = Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom + delta)) * 10) / 10;
+    aplicarZoom();
+  }
+
+  zoomIn.addEventListener('click', () => cambiarZoom(0.2));
+  zoomOut.addEventListener('click', () => cambiarZoom(-0.2));
+  aplicarZoom();
+
+  mural.addEventListener('keydown', (e) => {
+    const celda = (e.target as HTMLElement).closest<HTMLButtonElement>('.ladrillo');
+    if (!celda) return;
+    const id = Number(celda.dataset.id);
+    const destino = moverDesde(id, e.key, e.ctrlKey || e.metaKey);
+    if (destino === null) return;
+    e.preventDefault();
+    enfocar(destino);
+  });
+
+  formulario.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const texto = entrada.value.trim();
+    const n = Number(texto);
+    if (!texto || !Number.isInteger(n) || n < 0 || n >= total) {
+      errorIr.textContent = total
+        ? `Ese ladrillo no existe en esta pared. Probá con un número entre 0 y ${total - 1}.`
+        : 'Todavía estamos levantando la pared. Probá de nuevo en unos segundos.';
+      errorIr.hidden = false;
+      entrada.setAttribute('aria-invalid', 'true');
+      return;
+    }
+    errorIr.hidden = true;
+    entrada.removeAttribute('aria-invalid');
+    enfocar(n);
+  });
+
   async function iniciar() {
     const [campania, ladrillos] = await Promise.all([datos.obtenerCampania(), datos.obtenerLadrillos()]);
+    columnas = campania.columnas;
+    filas = campania.filas;
+    total = filas * columnas;
     mural.replaceChildren();
-    mural.style.setProperty('--columnas', String(campania.columnas));
-    mural.style.setProperty('--filas', String(campania.filas));
+    mural.style.setProperty('--columnas', String(columnas));
+    mural.style.setProperty('--filas', String(filas));
+    entrada.max = String(total - 1);
+    entrada.disabled = false;
+    botonIr.disabled = false;
 
-    for (let id = 0; id < campania.filas * campania.columnas; id++) {
-      const fila = Math.floor(id / campania.columnas);
-      const columna = id % campania.columnas;
+    for (let id = 0; id < total; id++) {
+      const fila = Math.floor(id / columnas);
+      const columna = id % columnas;
       const celda = document.createElement('button');
       celda.type = 'button';
       celda.className = 'ladrillo';
+      celda.dataset.id = String(id);
       celda.style.setProperty('--x', String(columna));
       celda.style.setProperty('--y', String(fila));
-      celda.setAttribute('aria-label', `Ladrillo #${id}, libre. Adoptalo`);
-      celda.addEventListener('click', () => {
-        if (ocupados.has(id)) window.location.href = `/ladrillo/${id}`;
-        else emitir('pv:ladrillo-seleccionado', { id });
-      });
+      celda.addEventListener('click', () => activarLadrillo(id));
       celda.addEventListener('pointerenter', () => mostrarTooltip(celda, id));
-      celda.addEventListener('focus', () => mostrarTooltip(celda, id));
-      celda.addEventListener('pointerleave', () => (tooltip.hidden = true));
-      celda.addEventListener('blur', () => (tooltip.hidden = true));
+      celda.addEventListener('focus', () => {
+        activo = id;
+        actualizarTabstops();
+        mostrarTooltip(celda, id);
+      });
+      celda.addEventListener('pointerleave', () => ocultarTooltip(celda));
+      celda.addEventListener('blur', () => ocultarTooltip(celda));
       celdas.set(id, celda);
       mural.append(celda);
     }
+    actualizarTabstops();
+    actualizarEstadoCampania(campania.estado);
     mural.setAttribute('aria-busy', 'false');
 
     ladrillos.forEach((l) => pintar(l));
-    datos.suscribirDonaciones((l) => pintar(l, true));
+    datos.suscribirDonaciones((l) => {
+      pintar(l, true);
+      void datos
+        .obtenerCampania()
+        .then((c) => actualizarEstadoCampania(c.estado))
+        .catch(() => {});
+    });
     escuchar('pv:donacion-confirmada', ({ ladrillo }) => pintar(ladrillo, true));
   }
 
@@ -103,6 +305,44 @@
 </script>
 
 <style>
+  .ir-ladrillo input {
+    width: 7rem;
+    min-height: 2.5rem;
+    padding: 0.4rem 0.55rem;
+    font: inherit;
+    color: var(--color-texto);
+    background: var(--color-fondo);
+    border: 1px solid var(--color-borde);
+  }
+  .ir-ladrillo button,
+  .zoom button {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0.4rem 0.8rem;
+    font: inherit;
+    font-weight: 700;
+    color: var(--color-acento);
+    background: transparent;
+    border: 2px solid var(--color-acento);
+    cursor: pointer;
+  }
+  .ir-ladrillo button:disabled,
+  .zoom button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .zoom span {
+    min-width: 3.5rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--color-tenue);
+  }
+  .mensaje-error {
+    color: var(--color-primario);
+  }
+  .aviso-campania :global(a) {
+    color: var(--color-acento);
+  }
   .mural-marco {
     margin: 0 -0.25rem;
     padding: 0 0.25rem;
@@ -112,12 +352,13 @@
     grid-template-columns: repeat(var(--columnas, 30), 1fr);
     gap: 2px;
     min-width: 620px;
-    background: #0a0812;
+    background: var(--color-fondo);
     padding: 2px;
   }
   .mural :global(.ladrillo) {
     aspect-ratio: 2 / 1;
     border: none;
+    border-radius: 3px;
     padding: 0;
     cursor: pointer;
     background-image: url('/mural.jpg');
@@ -125,16 +366,20 @@
     background-position: calc(var(--x) / (var(--columnas) - 1) * 100%) calc(var(--y) / (var(--filas) - 1) * 100%);
     filter: grayscale(1) brightness(0.35) contrast(0.9);
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), inset 0 -2px 0 rgb(0 0 0 / 0.35);
-    transition: filter 0.6s ease, transform 0.2s ease;
+    transition: filter 0.6s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .mural :global(.ladrillo[aria-disabled='true']) {
+    cursor: default;
   }
   .mural :global(.ladrillo:hover),
   .mural :global(.ladrillo:focus-visible) {
     filter: grayscale(0.4) brightness(0.8);
-    transform: translateY(-2px) scale(1.15);
+    transform: translateY(-2px) scale(1.08);
     position: relative;
     z-index: 2;
     outline: 2px solid var(--color-acento);
     outline-offset: 0;
+    box-shadow: 0 0 14px rgb(255 181 71 / 0.35), inset 0 1px 0 rgb(255 255 255 / 0.1);
   }
   .mural :global(.ladrillo.adoptado) {
     filter: none;
@@ -142,6 +387,7 @@
   }
   .mural :global(.ladrillo.adoptado:hover) {
     outline-color: var(--color-primario);
+    box-shadow: 0 0 18px rgb(255 61 154 / 0.4), inset 0 1px 0 rgb(255 255 255 / 0.25);
   }
   .mural :global(.ladrillo.recien) {
     position: relative;
@@ -168,9 +414,10 @@
     width: 24px;
     height: 12px;
     border: 1px solid var(--color-borde);
+    border-radius: 2px;
   }
   .muestra.libre {
-    background: #3a3342;
+    background: var(--color-libre);
   }
   .muestra.adoptado {
     background: linear-gradient(90deg, #8b5cf6, #ff3d9a, #ffb547);
@@ -185,7 +432,7 @@
     white-space: nowrap;
     display: flex;
     flex-direction: column;
-    background: #0f0b16;
+    background: var(--color-muro);
     box-shadow: 4px 4px 0 #000;
   }
   .mural-tooltip[hidden] {
@@ -204,6 +451,9 @@
   @media (prefers-reduced-motion: reduce) {
     .mural :global(.ladrillo.recien) {
       animation: none;
+    }
+    .mural :global(.ladrillo) {
+      transition: none;
     }
   }
 </style>

@@ -4,9 +4,11 @@ import {
   isAllowed,
   isConnected,
   requestAccess,
+  signMessage,
   signTransaction,
   WatchWalletChanges,
 } from '@stellar/freighter-api';
+import { Buffer } from 'buffer';
 import { RED } from '../../contracts/config';
 import { ErrorWallet } from './errores';
 import { firmarConPrueba, prepararWalletPrueba, walletPrueba, type EtapaPrueba } from './wallet-prueba';
@@ -68,6 +70,11 @@ export function desconectar(): void {
   localStorage.removeItem(CLAVE_CONECTADA);
 }
 
+/** Marca la billetera del navegador (creada o importada) como conectada, sin pipeline de fondeo. */
+export function marcarPruebaConectada(): void {
+  localStorage.setItem(CLAVE_CONECTADA, CONECTADA_PRUEBA);
+}
+
 export async function direccionActual(): Promise<string | null> {
   const tipo = tipoConectada();
   if (tipo === 'prueba') return walletPrueba()!.publicKey();
@@ -105,4 +112,28 @@ export function observarCambios(cb: (direccion: string | null, redOk: boolean) =
 
 export function abreviar(direccion: string): string {
   return `${direccion.slice(0, 4)}…${direccion.slice(-4)}`;
+}
+
+/**
+ * Firma un mensaje de texto con la billetera conectada y devuelve la firma en base64
+ * junto con la dirección que firmó. Con la billetera del navegador firma el texto
+ * directamente; con Freighter usa signMessage (que aplica el formato SEP-53).
+ * El servidor que verifica sabe distinguir las dos formas.
+ */
+export async function firmarMensaje(mensaje: string): Promise<{ firma: string; direccion: string }> {
+  const direccion = await requerirDireccion();
+  if (tipoConectada() === 'prueba') {
+    const par = walletPrueba();
+    if (!par) throw new ErrorWallet('sin-conexion');
+    const firma = par.sign(Buffer.from(mensaje, 'utf8'));
+    return { firma: Buffer.from(firma).toString('base64'), direccion };
+  }
+  const resultado = await signMessage(mensaje, { networkPassphrase: RED.passphrase, address: direccion });
+  lanzarSiError(resultado.error as ErrorFreighter | undefined);
+  if (!resultado.signedMessage) throw new ErrorWallet('desconocido', 'La billetera no devolvió la firma.');
+  const firma =
+    typeof resultado.signedMessage === 'string'
+      ? resultado.signedMessage
+      : Buffer.from(resultado.signedMessage).toString('base64');
+  return { firma, direccion };
 }

@@ -1,0 +1,295 @@
+---
+/**
+ * PanelFirmantes — pestaña Firmantes del admin: conocidos con saldo y clave,
+ * alta de firmantes de prueba y flujo de reemplazo con 2 aprobadores.
+ */
+---
+
+<section data-panel-firmantes>
+  <h2 class="m-0 text-3xl">Firmantes</h2>
+  <p class="m-0 mt-1 text-sm text-white/60">Vecinos que aprueban los hitos de cada campaña. La clave de los que dicen "clave en el servidor" vive solo en este servidor.</p>
+
+  <div data-lista-firmantes class="mt-4 grid gap-3 md:grid-cols-2">
+    <div class="skeleton h-20"></div>
+    <div class="skeleton h-20"></div>
+  </div>
+
+  <div class="mt-6 grid gap-4 md:grid-cols-2">
+    <form data-form-crear class="cartel grid content-start gap-3">
+      <h3 class="m-0 text-2xl">Crear firmante de prueba</h3>
+      <p class="m-0 text-sm text-white/60">Genera una billetera nueva en el servidor, la fondea con la red de prueba y guarda su clave acá.</p>
+      <div class="grid gap-1">
+        <label for="fc-nombre" class="text-sm font-bold">Nombre</label>
+        <input id="fc-nombre" name="nombre" type="text" required maxlength="40" placeholder="Vecina de la esquina" class="caja w-full px-3 py-2 text-sm" />
+      </div>
+      <div>
+        <button type="submit" class="boton-ladrillo presionable cursor-pointer rounded-md px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60">Crear firmante</button>
+      </div>
+      <p class="m-0 text-sm" data-crear-estado aria-live="polite"></p>
+    </form>
+
+    <form data-form-agregar class="cartel grid content-start gap-3">
+      <h3 class="m-0 text-2xl">Agregar por dirección</h3>
+      <p class="m-0 text-sm text-white/60">Anota un firmante que ya existe (por ejemplo el de la billetera de un vecino). El servidor no tiene su clave.</p>
+      <div class="grid gap-1">
+        <label for="fa-nombre" class="text-sm font-bold">Nombre</label>
+        <input id="fa-nombre" name="nombre" type="text" required maxlength="40" placeholder="Donación anónima" class="caja w-full px-3 py-2 text-sm" />
+      </div>
+      <div class="grid gap-1">
+        <label for="fa-direccion" class="text-sm font-bold">Dirección</label>
+        <input id="fa-direccion" name="direccion" type="text" required spellcheck="false" placeholder="G…" class="caja w-full px-3 py-2 font-mono text-xs" />
+      </div>
+      <div>
+        <button type="submit" class="boton-neon presionable cursor-pointer rounded-md px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60">Agregar</button>
+      </div>
+      <p class="m-0 text-sm" data-agregar-estado aria-live="polite"></p>
+    </form>
+  </div>
+
+  <details class="cartel mt-6">
+    <summary class="cursor-pointer font-display text-2xl tracking-wide text-white">Reemplazar firmante</summary>
+    <p class="m-0 mt-2 text-sm text-white/60">
+      Para cambiar un firmante hace falta que aprueben otros 2 firmantes actuales de la campaña, y el servidor tiene que tener la clave de esos 2.
+    </p>
+    <p class="m-0 mt-2 rounded-md border border-junta p-2 text-sm text-white/70" data-aviso-vieja hidden>
+      Esta campaña usa una versión anterior del contrato y no permite cambiar firmantes. Las campañas nuevas creadas desde el panel sí.
+    </p>
+    <form data-form-rotar class="mt-4 grid gap-3" novalidate>
+      <div class="grid gap-1">
+        <label for="fr-campania" class="text-sm font-bold">Campaña</label>
+        <select id="fr-campania" class="caja w-full px-3 py-2 text-sm" data-fr-campania></select>
+      </div>
+      <div class="grid gap-3 md:grid-cols-3">
+        <div class="grid gap-1">
+          <label for="fr-saliente" class="text-sm font-bold">Sale</label>
+          <select id="fr-saliente" class="caja w-full px-3 py-2 text-sm" data-fr-saliente></select>
+        </div>
+        <div class="grid gap-1">
+          <label for="fr-nuevo" class="text-sm font-bold">Entra</label>
+          <select id="fr-nuevo" class="caja w-full px-3 py-2 text-sm" data-fr-nuevo></select>
+        </div>
+        <div class="grid gap-1">
+          <span class="text-sm font-bold">Aprueban (2 con clave acá)</span>
+          <select class="caja w-full px-3 py-2 text-sm" data-fr-aprobador1 aria-label="Primer aprobador"></select>
+          <select class="caja w-full px-3 py-2 text-sm" data-fr-aprobador2 aria-label="Segundo aprobador"></select>
+        </div>
+      </div>
+      <p class="m-0 text-sm font-bold text-rosa" data-fr-error aria-live="polite"></p>
+      <div>
+        <button type="submit" class="boton-ladrillo presionable cursor-pointer rounded-md px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60" data-fr-enviar disabled>Reemplazar firmante</button>
+      </div>
+      <p class="m-0 text-sm" data-fr-estado aria-live="polite"></p>
+    </form>
+  </details>
+</section>
+
+<script>
+  import { abreviar, esDireccionValida, getJSON, postJSON, toast, urlTx } from './util';
+
+  interface Firmante {
+    direccion: string;
+    nombre: string;
+    tieneClave: boolean;
+    saldoXlm?: string;
+  }
+  interface Campania {
+    id: string;
+    nombre: string;
+    firmantes: string[];
+    permiteRotar?: boolean;
+  }
+
+  const $ = <T extends HTMLElement = HTMLElement>(sel: string): T => document.querySelector(sel) as T;
+  const lista = $('[data-lista-firmantes]');
+  let firmantes: Firmante[] = [];
+  let campanias: Campania[] = [];
+
+  async function cargar() {
+    lista.innerHTML = '<div class="skeleton h-20"></div><div class="skeleton h-20"></div>';
+    try {
+      const [f, c] = await Promise.all([
+        getJSON<{ firmantes: Firmante[] }>('/api/admin/firmantes'),
+        getJSON<{ campanias: Campania[] }>('/api/admin/campanias'),
+      ]);
+      firmantes = f.firmantes ?? [];
+      campanias = c.campanias ?? [];
+      pintarFirmantes();
+      pintarRotacion();
+    } catch (err) {
+      lista.innerHTML = '';
+      const p = document.createElement('p');
+      p.className = 'caja p-3 text-sm text-rosa md:col-span-2';
+      p.textContent = (err as Error).message;
+      lista.appendChild(p);
+    }
+  }
+
+  function pintarFirmantes() {
+    lista.innerHTML = '';
+    if (!firmantes.length) {
+      lista.innerHTML = '<p class="text-white/60 md:col-span-2">Todavía no hay firmantes conocidos.</p>';
+      return;
+    }
+    firmantes.forEach((f) => {
+      const tarjeta = document.createElement('article');
+      tarjeta.className = 'caja grid gap-1 p-3';
+      tarjeta.innerHTML = `
+        <div class="flex flex-wrap items-center gap-2">
+          <strong class="text-white"></strong>
+          ${f.tieneClave ? '<span class="rounded-full bg-violeta px-2 py-0.5 text-xs font-bold uppercase text-noche">Clave en el servidor</span>' : '<span class="rounded-full border border-junta px-2 py-0.5 text-xs uppercase text-white/50">Sin clave acá</span>'}
+        </div>
+        <p class="m-0 font-mono text-xs text-white/50 break-all"></p>
+        <p class="saldo m-0 text-sm text-ambar"></p>`;
+      tarjeta.querySelector('strong')!.textContent = f.nombre;
+      (tarjeta.querySelectorAll('p')[0] as HTMLElement).textContent = f.direccion;
+      (tarjeta.querySelector('.saldo') as HTMLElement).textContent = f.saldoXlm !== undefined ? `${f.saldoXlm} XLM` : '';
+      lista.appendChild(tarjeta);
+    });
+  }
+
+  function pintarRotacion() {
+    const selCampania = $('[data-fr-campania]') as HTMLSelectElement;
+    selCampania.innerHTML = campanias.map((c) => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    actualizarSelects();
+  }
+
+  function campaniaSeleccionada(): Campania | undefined {
+    const selCampania = $('[data-fr-campania]') as HTMLSelectElement;
+    return campanias.find((c) => c.id === selCampania.value);
+  }
+
+  function firmantesDeCampania(): string[] {
+    return campaniaSeleccionada()?.firmantes ?? [];
+  }
+
+  // Las campañas con el contrato viejo no soportan rotar_firmante; si el campo falta, se asume vieja.
+  function actualizarBloqueoRotacion(): boolean {
+    const permite = campaniaSeleccionada()?.permiteRotar === true;
+    $('[data-aviso-vieja]').hidden = permite;
+    const form = $('[data-form-rotar]');
+    form.querySelectorAll('select, button').forEach((el) => {
+      if ((el as HTMLElement).hasAttribute('data-fr-campania')) return;
+      (el as HTMLButtonElement).disabled = !permite;
+    });
+    form.style.opacity = permite ? '' : '0.5';
+    return permite;
+  }
+
+  function actualizarSelects() {
+    const actuales = firmantesDeCampania();
+    const selSaliente = $('[data-fr-saliente]') as HTMLSelectElement;
+    const selNuevo = $('[data-fr-nuevo]') as HTMLSelectElement;
+    const selA1 = $('[data-fr-aprobador1]') as HTMLSelectElement;
+    const selA2 = $('[data-fr-aprobador2]') as HTMLSelectElement;
+
+    selSaliente.innerHTML = actuales
+      .map((d) => {
+        const conocido = firmantes.find((f) => f.direccion === d);
+        return `<option value="${d}">${conocido ? conocido.nombre : abreviar(d)} (${abreviar(d)})</option>`;
+      })
+      .join('');
+    const candidatosNuevo = firmantes.filter((f) => !actuales.includes(f.direccion));
+    selNuevo.innerHTML = candidatosNuevo.map((f) => `<option value="${f.direccion}">${f.nombre} (${abreviar(f.direccion)})</option>`).join('');
+    const conClaveEnCampania = firmantes.filter((f) => f.tieneClave && actuales.includes(f.direccion));
+    selA1.innerHTML = conClaveEnCampania.map((f) => `<option value="${f.direccion}">${f.nombre} (${abreviar(f.direccion)})</option>`).join('');
+    selA2.innerHTML = selA1.innerHTML;
+    validarRotacion();
+  }
+
+  function validarRotacion(): boolean {
+    if (!actualizarBloqueoRotacion()) {
+      $('[data-fr-error]').textContent = '';
+      ($('[data-fr-enviar]') as HTMLButtonElement).disabled = true;
+      return false;
+    }
+    const saliente = ($('[data-fr-saliente]') as HTMLSelectElement).value;
+    const nuevo = ($('[data-fr-nuevo]') as HTMLSelectElement).value;
+    const a1 = ($('[data-fr-aprobador1]') as HTMLSelectElement).value;
+    const a2 = ($('[data-fr-aprobador2]') as HTMLSelectElement).value;
+    const error = $('[data-fr-error]');
+    let texto = '';
+    if (!saliente || !nuevo || !a1 || !a2) texto = 'Completá las cuatro elecciones.';
+    else if (saliente === nuevo) texto = 'El que entra no puede ser el mismo que sale.';
+    else if (a1 === a2) texto = 'Los dos aprobadores tienen que ser distintos.';
+    else if (a1 === saliente || a2 === saliente) texto = 'Los aprobadores tienen que ser otros firmantes, no el que sale.';
+    else if (a1 === nuevo || a2 === nuevo) texto = 'Los aprobadores no pueden ser el firmante nuevo.';
+    error.textContent = texto;
+    ($('[data-fr-enviar]') as HTMLButtonElement).disabled = texto !== '';
+    return texto === '';
+  }
+
+  ['[data-fr-campania]', '[data-fr-saliente]', '[data-fr-nuevo]', '[data-fr-aprobador1]', '[data-fr-aprobador2]'].forEach((sel) => {
+    $(sel).addEventListener('change', () => {
+      if (sel === '[data-fr-campania]') {
+        actualizarSelects();
+        actualizarBloqueoRotacion();
+      } else validarRotacion();
+    });
+  });
+
+  $('[data-form-rotar]').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validarRotacion()) return;
+    const boton = $('[data-fr-enviar]') as HTMLButtonElement;
+    const estado = $('[data-fr-estado]');
+    boton.disabled = true;
+    estado.textContent = 'Enviando el reemplazo a la red…';
+    try {
+      const res = await postJSON<{ hash: string }>('/api/admin/rotar-firmante', {
+        campania: ($('[data-fr-campania]') as HTMLSelectElement).value,
+        saliente: ($('[data-fr-saliente]') as HTMLSelectElement).value,
+        nuevo: ($('[data-fr-nuevo]') as HTMLSelectElement).value,
+        aprobador1: ($('[data-fr-aprobador1]') as HTMLSelectElement).value,
+        aprobador2: ($('[data-fr-aprobador2]') as HTMLSelectElement).value,
+      });
+      estado.innerHTML = '';
+      const enlace = document.createElement('a');
+      enlace.href = urlTx(res.hash);
+      enlace.target = '_blank';
+      enlace.rel = 'noopener';
+      enlace.textContent = 'Firmante reemplazado: ver el comprobante público';
+      estado.appendChild(enlace);
+      toast('Firmante reemplazado.', 'exito');
+      cargar();
+    } catch (err) {
+      estado.textContent = (err as Error).message;
+      toast((err as Error).message, 'error');
+    } finally {
+      boton.disabled = false;
+    }
+  });
+
+  function altaFirmante(formSel: string, estadoSel: string, conDireccion: boolean) {
+    $(formSel).addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.currentTarget as HTMLFormElement;
+      const estado = $(estadoSel);
+      const nombre = (form.querySelector('[name="nombre"]') as HTMLInputElement).value.trim();
+      const direccion = conDireccion ? (form.querySelector('[name="direccion"]') as HTMLInputElement).value.trim() : undefined;
+      if (!nombre) return;
+      if (conDireccion && direccion && !esDireccionValida(direccion)) {
+        estado.textContent = 'La dirección no es válida (empieza con G, 56 caracteres).';
+        return;
+      }
+      const boton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+      boton.disabled = true;
+      estado.textContent = conDireccion ? 'Anotando…' : 'Creando la billetera y fondeándola en la red de prueba…';
+      try {
+        const res = await postJSON<Firmante>('/api/admin/firmantes', conDireccion ? { nombre, direccion } : { nombre });
+        estado.textContent = `Listo: ${res.nombre} (${abreviar(res.direccion)}).`;
+        toast(`Firmante "${res.nombre}" agregado.`, 'exito');
+        form.reset();
+        cargar();
+      } catch (err) {
+        estado.textContent = (err as Error).message;
+        toast((err as Error).message, 'error');
+      } finally {
+        boton.disabled = false;
+      }
+    });
+  }
+
+  altaFirmante('[data-form-crear]', '[data-crear-estado]', false);
+  altaFirmante('[data-form-agregar]', '[data-agregar-estado]', true);
+  document.addEventListener('admin:sesion', () => cargar());
+</script>

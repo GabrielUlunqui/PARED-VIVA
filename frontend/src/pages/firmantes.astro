@@ -3,21 +3,34 @@ import Base from '../layouts/Base.astro';
 import PanelPrueba from '../components/prueba/PanelPrueba.astro';
 ---
 
-<Base titulo="Firmantes">
-  <h1>Panel de firmantes</h1>
-  <p class="intro">Los fondos se liberan al restaurador hito por hito, solo cuando aprueban 2 de los 3 firmantes.</p>
+<Base titulo="Firmantes" descripcion="Los fondos del mural se liberan hito por hito solo cuando aprueban 2 de los 3 firmantes elegidos por la comunidad.">
+  <div class="mx-auto max-w-4xl">
+  <p class="etiqueta m-0">Confianza en la plata</p>
+  <h1 class="m-0">Panel de <span class="neon text-ambar">firmantes</span></h1>
+  <p class="m-0 mt-3 max-w-2xl text-white/70">Los fondos se liberan al restaurador hito por hito, solo cuando aprueban 2 de los 3 firmantes: vecinos referentes del barrio elegidos por la comunidad.</p>
   <PanelPrueba />
 
   <p class="resumen" data-resumen>Cargando…</p>
   <p class="aviso" data-aviso hidden></p>
+  <p class="cta-clave-wrap" data-cta-clave-wrap hidden>
+    <button type="button" class="cta-clave" data-usar-clave>¿Sos firmante? Usá tu clave</button>
+  </p>
   <p class="estado" data-estado role="status" hidden></p>
   <p class="error" data-error role="alert" hidden></p>
   <p class="exito" data-exito role="status" hidden></p>
 
+  <section class="panel-demo" data-demo-panel hidden aria-labelledby="titulo-demo">
+    <h2 id="titulo-demo" class="titulo-demo">Firmar como firmante de demo</h2>
+    <p class="nota-demo">Modo demo: las claves de los firmantes están en el servidor. Solo para testnet.</p>
+    <div data-demo-contenido></div>
+    <p class="estado" data-demo-estado role="status" aria-live="polite" hidden></p>
+    <p class="error" data-demo-error role="alert" hidden></p>
+    <p class="exito" data-demo-exito role="status" aria-live="polite" hidden></p>
+  </section>
+
   <ol class="hitos" data-hitos></ol>
 
-  <h2>Firmantes</h2>
-  <ul class="firmantes" data-firmantes></ul>
+  </div>
 </Base>
 
 <script>
@@ -43,12 +56,24 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
     Pagado: 'Pagado',
   };
   const MENSAJES_ETAPA: Record<EtapaTx, string> = {
-    firmando: 'Confirmá la aprobación en tu wallet…',
-    enviando: 'Enviando a la red Stellar…',
+    firmando: 'Confirmá la aprobación en tu billetera…',
+    enviando: 'Confirmando, unos segundos…',
   };
 
   let direccion: string | null = null;
   let ocupado = false;
+  let ocupadoDemo = false;
+
+  interface FirmanteDemo {
+    numero: number;
+    direccion: string;
+  }
+  let demoActivo = false;
+  let demoFirmantes: FirmanteDemo[] = [];
+
+  function toast(mensaje: string, tipo: 'exito' | 'error') {
+    window.dispatchEvent(new CustomEvent('pv:toast', { detail: { mensaje, tipo } }));
+  }
 
   function mostrar(sel: string, contenido: string | null, html = false) {
     const el = $(sel);
@@ -61,8 +86,8 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
     if (c.estado === 'Activa') return 'Los hitos se pueden aprobar cuando la campaña alcance la meta.';
     if (c.estado === 'Fallida') return 'La campaña no alcanzó la meta: no se liberan fondos y los donantes pueden recuperar su aporte.';
     if (c.estado === 'Completada') return 'Todos los hitos fueron pagados al restaurador.';
-    if (!direccion) return 'Conectá tu wallet para aprobar hitos si sos firmante.';
-    if (!esFirmante) return 'Tu wallet no es firmante de esta campaña: solo podés ver el estado.';
+    if (!direccion) return 'Conectá tu billetera (podés usar la de prueba) para aprobar hitos si sos firmante.';
+    if (!esFirmante) return 'Tu billetera no es firmante de esta campaña: solo podés ver el estado.';
     return null;
   }
 
@@ -71,14 +96,14 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
     const puedeAprobar = esFirmante && c.estado === 'Financiada' && h.indice === c.hitoActual && !yaAprobe;
     const quienes = h.aprobadoPor.map((d) => (d === direccion ? 'vos' : abreviar(d))).join(', ');
     return `
-      <li class="hito ${h.estado.toLowerCase()}">
+      <li class="hito rounded-xl ${h.estado.toLowerCase()}" data-revelar style="transition-delay: ${h.indice * 100}ms">
         <div class="cabecera-hito">
           <strong>Hito ${h.indice + 1}</strong>
           <span>${formatearUsdc(h.monto)}</span>
           <span class="insignia">${ETIQUETA_HITO[h.estado]}</span>
         </div>
         <p>${Math.min(h.aprobadoPor.length, APROBACIONES_NECESARIAS)} de ${APROBACIONES_NECESARIAS} aprobaciones${quienes ? ` · ${quienes}` : ''}</p>
-        ${puedeAprobar ? `<button type="button" class="aprobar" data-aprobar="${h.indice}" ${ocupado ? 'disabled' : ''}>Aprobar hito ${h.indice + 1}</button>` : ''}
+        ${puedeAprobar ? `<button type="button" class="boton-ladrillo mt-3 cursor-pointer px-5 py-3 font-sans text-sm font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60" data-aprobar="${h.indice}" ${ocupado ? 'disabled' : ''}>Aprobar hito ${h.indice + 1}</button>` : ''}
         ${yaAprobe && h.estado !== 'Pagado' ? '<p class="nota">Ya aprobaste este hito. Falta otro firmante.</p>' : ''}
       </li>`;
   }
@@ -96,14 +121,103 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
         `Estado: ${ETIQUETA_CAMPANIA[c.estado]} · Recaudado ${formatearUsdc(c.recaudado)} de ${formatearUsdc(c.meta)}`,
       );
       mostrar('[data-aviso]', aviso(c, esFirmante));
+      $('[data-cta-clave-wrap]').hidden = !(direccion && !esFirmante);
       lista.innerHTML = hitos.map((h) => filaHito(h, c, esFirmante)).join('');
-      $('[data-firmantes]').innerHTML = firmantes
-        .map((f) => `<li><code>${abreviar(f)}</code>${f === direccion ? ' <strong>(vos)</strong>' : ''}</li>`)
-        .join('');
+      pintarDemo(c, hitos);
     } catch (e) {
       mostrar('[data-error]', traducirError(e));
     }
   }
+
+  function pintarDemo(c: Campania, hitos: Hito[]) {
+    const panel = $('[data-demo-panel]');
+    if (!demoActivo) {
+      panel.hidden = true;
+      return;
+    }
+    panel.hidden = false;
+    const contenido = $('[data-demo-contenido]');
+    const indice = c.hitoActual;
+    const hito = hitos[indice];
+    const listaFirmantes = demoFirmantes
+      .map((f) => `<li>Firmante ${f.numero} · <code>${abreviar(f.direccion)}</code></li>`)
+      .join('');
+    if (!hito || c.estado !== 'Financiada') {
+      contenido.innerHTML = `<ul class="lista-demo">${listaFirmantes}</ul>`;
+      return;
+    }
+    const aprobaron = demoFirmantes.filter((f) => hito.aprobadoPor.includes(f.direccion));
+    const faltan = demoFirmantes.filter((f) => !hito.aprobadoPor.includes(f.direccion));
+    const quienes = aprobaron.length
+      ? `Ya aprobaron: ${aprobaron.map((f) => `Firmante ${f.numero}`).join(', ')}.`
+      : 'Todavía no aprobó ningún firmante.';
+    const botones = faltan
+      .map(
+        (f) =>
+          `<button type="button" class="boton-ladrillo mt-3 cursor-pointer px-5 py-3 font-sans text-sm font-bold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60" data-aprobar-demo="${f.numero}" data-hito-demo="${indice}" ${ocupadoDemo ? 'disabled' : ''}>Aprobar como Firmante ${f.numero}</button>`,
+      )
+      .join(' ');
+    contenido.innerHTML = `
+      <ul class="lista-demo">${listaFirmantes}</ul>
+      <p class="hito-demo"><strong>Hito ${indice + 1}</strong> · ${formatearUsdc(hito.monto)} — ${quienes}</p>
+      <div class="botones-demo">${botones}</div>`;
+  }
+
+  $('[data-demo-contenido]').addEventListener('click', async (e) => {
+    const boton = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-aprobar-demo]');
+    if (!boton || ocupadoDemo) return;
+    const numero = Number(boton.dataset.aprobarDemo);
+    const hito = Number(boton.dataset.hitoDemo);
+    ocupadoDemo = true;
+    mostrar('[data-demo-error]', null);
+    mostrar('[data-demo-exito]', null);
+    mostrar('[data-demo-estado]', 'Confirmando la aprobación, unos segundos…');
+    boton.disabled = true;
+    try {
+      const respuesta = await fetch('/api/firmar-demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firmante: numero, hito }),
+      });
+      const cuerpo = (await respuesta.json().catch(() => ({}))) as { hash?: string; error?: string };
+      if (!respuesta.ok) throw new Error(cuerpo.error || 'No se pudo registrar la aprobación.');
+      const hitoActualizado = (await datos.obtenerHitos())[hito];
+      const texto =
+        hitoActualizado.estado === 'Pagado'
+          ? `¡Hito ${hito + 1} liberado! Se transfirieron ${formatearUsdc(hitoActualizado.monto)} al restaurador.`
+          : `Aprobación registrada como Firmante ${numero}. Falta ${APROBACIONES_NECESARIAS - hitoActualizado.aprobadoPor.length} aprobación más para liberar el hito.`;
+      const enlace =
+        cuerpo.hash && esTxReal(cuerpo.hash)
+          ? ` <a href="${urlTransaccion(cuerpo.hash)}" target="_blank" rel="noopener">Ver el comprobante público</a>`
+          : '';
+      mostrar('[data-demo-exito]', texto + enlace, true);
+      toast('Aprobación registrada', 'exito');
+    } catch (err) {
+      const mensaje = traducirError(err);
+      mostrar('[data-demo-error]', mensaje);
+      toast(mensaje, 'error');
+    } finally {
+      ocupadoDemo = false;
+      mostrar('[data-demo-estado]', null);
+      await render();
+    }
+  });
+
+  async function cargarDemo() {
+    try {
+      const respuesta = await fetch('/api/firmar-demo');
+      if (!respuesta.ok) return;
+      const cuerpo = (await respuesta.json()) as { activo?: boolean; firmantes?: FirmanteDemo[] };
+      demoActivo = !!cuerpo.activo;
+      demoFirmantes = cuerpo.firmantes ?? [];
+    } catch {
+      demoActivo = false;
+    }
+  }
+
+  $('[data-usar-clave]').addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('pv:abrir-importar-clave'));
+  });
 
   lista.addEventListener('click', async (e) => {
     const boton = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-aprobar]');
@@ -120,7 +234,7 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
         hito.estado === 'Pagado'
           ? `¡Hito ${indice + 1} liberado! Se transfirieron ${formatearUsdc(hito.monto)} al restaurador.`
           : `Aprobación registrada. Falta ${APROBACIONES_NECESARIAS - hito.aprobadoPor.length} aprobación más para liberar el hito.`;
-      const enlace = esTxReal(txHash) ? ` <a href="${urlTransaccion(txHash)}" target="_blank" rel="noopener">Ver transacción</a>` : '';
+      const enlace = esTxReal(txHash) ? ` <a href="${urlTransaccion(txHash)}" target="_blank" rel="noopener">Ver el comprobante público</a>` : '';
       mostrar('[data-exito]', texto + enlace, true);
     } catch (err) {
       mostrar('[data-error]', traducirError(err));
@@ -131,6 +245,8 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
     }
   });
 
+  void cargarDemo().then(() => render());
+
   alCambiarWallet((nueva) => {
     direccion = nueva;
     render();
@@ -138,23 +254,21 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
 </script>
 
 <style>
-  .intro {
-    opacity: 0.85;
-  }
   .resumen {
     font-weight: 600;
   }
   .aviso {
-    color: var(--color-secundario);
+    color: #ffb547;
   }
   .estado {
-    color: var(--color-secundario);
+    color: #8b5cf6;
   }
   .error {
-    color: var(--color-primario);
+    color: #ff3d9a;
+    font-weight: 600;
   }
   .exito {
-    color: var(--color-secundario);
+    color: #ffb547;
     font-weight: 600;
   }
   .hitos {
@@ -165,10 +279,10 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
     gap: var(--espacio);
   }
   .hitos :global(.hito) {
-    background: var(--color-superficie, white);
-    border: 1px solid var(--color-borde);
-    border-radius: var(--radio);
-    padding: var(--espacio);
+    background: #140f1e;
+    border: 2px solid #241c31;
+    box-shadow: 6px 6px 0 #000;
+    padding: var(--espacio, 1rem);
   }
   .hitos :global(.hito p) {
     margin: 0.5rem 0 0;
@@ -184,35 +298,74 @@ import PanelPrueba from '../components/prueba/PanelPrueba.astro';
     font-size: 0.8rem;
     padding: 0.15rem 0.6rem;
     border-radius: 999px;
-    background: var(--color-libre);
+    background: #241c31;
+    color: rgb(255 255 255 / 0.7);
   }
   .hitos :global(.enaprobacion .insignia) {
-    background: #f3d9a4;
+    background: #ffb547;
+    color: #0a0812;
+    font-weight: 700;
   }
   .hitos :global(.pagado .insignia) {
-    background: var(--color-secundario);
-    color: white;
-  }
-  .hitos :global(.aprobar) {
-    margin-top: 0.75rem;
-    border: none;
-    border-radius: var(--radio);
-    padding: 0.6rem 1.2rem;
-    font: inherit;
-    font-weight: 600;
-    background: var(--color-primario);
-    color: white;
-    cursor: pointer;
-  }
-  .hitos :global(.aprobar:disabled) {
-    opacity: 0.6;
-    cursor: wait;
+    background: #38e1ff;
+    color: #0a0812;
+    font-weight: 700;
   }
   .hitos :global(.nota) {
     font-size: 0.9rem;
     opacity: 0.8;
   }
-  .firmantes code {
+  .cta-clave-wrap {
+    margin: 0.5rem 0 0;
+  }
+  .cta-clave {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: #38e1ff;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .cta-clave:hover {
+    color: #ffb547;
+  }
+  .panel-demo {
+    background: #140f1e;
+    border: 2px solid #241c31;
+    box-shadow: 6px 6px 0 #000;
+    border-radius: 0.75rem;
+    padding: var(--espacio, 1rem);
+    margin: var(--espacio, 1rem) 0;
+  }
+  .titulo-demo {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+  .nota-demo {
+    font-size: 0.8rem;
+    color: rgb(255 255 255 / 0.55);
+    margin: 0.3rem 0 0.8rem;
+  }
+  .panel-demo :global(.lista-demo) {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
     font-size: 0.9rem;
+    color: rgb(255 255 255 / 0.8);
+  }
+  .panel-demo :global(.hito-demo) {
+    margin: 0 0 0.4rem;
+  }
+  .panel-demo :global(.botones-demo) {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .panel-demo :global(.botones-demo .boton-ladrillo) {
+    margin-top: 0.5rem;
   }
 </style>

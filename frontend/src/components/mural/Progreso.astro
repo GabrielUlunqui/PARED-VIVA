@@ -3,15 +3,16 @@ import BarraProgreso from '../ui/BarraProgreso.astro';
 import CuentaRegresiva from '../ui/CuentaRegresiva.astro';
 ---
 
-<section class="progreso cartel !px-6 !pb-6 !pt-10 md:!px-8 md:!pb-8">
-  <span class="estado boton-neon inline-flex items-center gap-2 px-3 py-1 text-xs font-bold uppercase tracking-wider" data-estado-caja>
-    <span class="punto h-2 w-2 bg-current"></span><span data-estado>Cargando…</span>
+<section class="progreso aparecer cartel rounded-xl !px-6 !pb-6 !pt-10 md:!px-8 md:!pb-8">
+  <span class="estado boton-neon inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider" data-estado-caja>
+    <span class="punto h-2 w-2 rounded-full bg-current"></span><span data-estado>Cargando…</span>
   </span>
   <p class="m-0 mt-5 font-display text-6xl leading-none md:text-7xl">
-    <span data-recaudado>—</span><span class="text-2xl text-white/40 md:text-3xl"> / <span data-meta>—</span></span>
+    <span data-recaudado>—</span><span class="text-2xl text-white/60 md:text-3xl"> / <span data-meta>—</span></span>
   </p>
   <p class="m-0 mt-1 text-sm text-white/60"><strong class="text-white" data-ladrillos>—</strong> ladrillos adoptados · <span data-porcentaje>0</span>% de la meta</p>
   <div class="mt-4"><BarraProgreso id="barra-progreso" alto="grande" /></div>
+  <p data-aviso-estado class="caja m-0 mt-4 rounded-md p-3 text-sm text-white/80" hidden></p>
   <p class="etiqueta m-0 mt-6 mb-2">Termina en</p>
   <CuentaRegresiva id="cuenta-campania" />
   <slot />
@@ -20,6 +21,7 @@ import CuentaRegresiva from '../ui/CuentaRegresiva.astro';
 <script>
   import { datos } from '../../lib/datos';
   import { escuchar } from '../../lib/eventos';
+  import { porcentajeCampania } from '../../lib/formato';
   import { formatearUsdc, type EstadoCampania } from '../../lib/tipos';
 
   const ESTADOS: Record<EstadoCampania, { texto: string; color: string }> = {
@@ -30,13 +32,19 @@ import CuentaRegresiva from '../ui/CuentaRegresiva.astro';
   };
 
   const raiz = document.querySelector('.progreso') as HTMLElement;
-  const barra = document.getElementById('barra-progreso') as HTMLElement;
+  const barra = raiz.querySelector('#barra-progreso') as HTMLElement;
   const relleno = barra.querySelector('.relleno') as HTMLElement;
   const caja = raiz.querySelector('[data-estado-caja]') as HTMLElement;
+  const aviso = raiz.querySelector('[data-aviso-estado]') as HTMLElement;
+  const cuenta = raiz.querySelector('#cuenta-campania') as HTMLElement;
+  const punto = raiz.querySelector('.punto') as HTMLElement;
   const texto = (selector: string, valor: string) => ((raiz.querySelector(selector) as HTMLElement).textContent = valor);
+  const movimientoReducido = matchMedia('(prefers-reduced-motion: reduce)');
 
   let espera = 2000;
   let temporizador: ReturnType<typeof setTimeout> | undefined;
+  let animacionContador: number | undefined;
+  let contadorInicializado = false;
 
   function reintentar() {
     clearTimeout(temporizador);
@@ -44,21 +52,65 @@ import CuentaRegresiva from '../ui/CuentaRegresiva.astro';
     espera = Math.min(espera * 2, 30000);
   }
 
+  function escribirRecaudado(valor: number) {
+    texto('[data-recaudado]', formatearUsdc(BigInt(Math.round(valor))).replace(' USDC', ''));
+  }
+
+  function mostrarRecaudado(destino: bigint) {
+    if (animacionContador) cancelAnimationFrame(animacionContador);
+    const final = Number(destino);
+    if (contadorInicializado || movimientoReducido.matches) {
+      escribirRecaudado(final);
+      contadorInicializado = true;
+      return;
+    }
+    const inicio = performance.now();
+    const duracion = 1100;
+    const paso = (ahora: number) => {
+      const k = Math.min(1, (ahora - inicio) / duracion);
+      const suavizado = 1 - Math.pow(1 - k, 3);
+      escribirRecaudado(final * suavizado);
+      if (k < 1) animacionContador = requestAnimationFrame(paso);
+      else contadorInicializado = true;
+    };
+    escribirRecaudado(0);
+    animacionContador = requestAnimationFrame(paso);
+  }
+
+  function mostrarAviso(estado: EstadoCampania) {
+    const cta = raiz.querySelector('[data-adoptar-cta]') as HTMLElement | null;
+    if (estado === 'Financiada' || estado === 'Completada') {
+      aviso.textContent = '¡Llegamos a la meta, gracias! Los recuerdos quedan guardados y el mural avanza por hitos.';
+      aviso.hidden = false;
+      if (cta) cta.hidden = true;
+    } else if (estado === 'Fallida') {
+      aviso.innerHTML = 'No llegamos a la meta: podés recuperar tu aporte en <a class="text-ambar" href="/mi-aporte">Mi aporte</a>.';
+      aviso.hidden = false;
+      if (cta) cta.hidden = true;
+    } else {
+      aviso.hidden = true;
+      aviso.textContent = '';
+      if (cta) cta.hidden = false;
+    }
+  }
+
   async function actualizar() {
     try {
       const [c, ladrillos] = await Promise.all([datos.obtenerCampania(), datos.obtenerLadrillos()]);
-      const porcentaje = c.meta > 0n ? Math.min(100, Number((c.recaudado * 100n) / c.meta)) : 0;
+      const porcentaje = porcentajeCampania(c.recaudado, c.meta);
       const estado = ESTADOS[c.estado] ?? { texto: c.estado, color: 'text-rosa' };
-      texto('[data-recaudado]', formatearUsdc(c.recaudado).replace(' USDC', ''));
+      mostrarRecaudado(c.recaudado);
       texto('[data-meta]', formatearUsdc(c.meta));
       texto('[data-estado]', estado.texto);
       texto('[data-ladrillos]', `${ladrillos.length} de ${c.filas * c.columnas}`);
       texto('[data-porcentaje]', String(porcentaje));
-      caja.className = caja.className.replace(/\btext-\S+/g, '').trim() + ` ${estado.color}`;
-      (raiz.querySelector('.punto') as HTMLElement).classList.toggle('animate-ping', c.estado === 'Activa');
-      (document.getElementById('cuenta-campania') as HTMLElement).dataset.hasta = String(c.fechaLimite);
+      Object.values(ESTADOS).forEach((e) => caja.classList.remove(e.color));
+      caja.classList.add(estado.color);
+      punto.classList.toggle('motion-safe:animate-ping', c.estado === 'Activa');
+      cuenta.dataset.hasta = String(c.fechaLimite);
       barra.setAttribute('aria-valuenow', String(porcentaje));
       relleno.style.width = `${porcentaje}%`;
+      mostrarAviso(c.estado);
       espera = 2000;
     } catch {
       texto('[data-estado]', 'No pudimos leer la campaña, reintentando…');
@@ -70,3 +122,14 @@ import CuentaRegresiva from '../ui/CuentaRegresiva.astro';
   datos.suscribirDonaciones(() => void actualizar());
   escuchar('pv:donacion-confirmada', () => void actualizar());
 </script>
+
+<style>
+  .progreso :global(.relleno) {
+    transition: width 0.9s ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .progreso :global(.relleno) {
+      transition: none;
+    }
+  }
+</style>

@@ -11,10 +11,36 @@ const MONTO_INICIAL = '5';
   <form class="donar" data-donar-form novalidate>
     <p class="resumen">Ladrillo <strong data-donar-id>—</strong></p>
 
+    <div class="onboarding" data-onboarding hidden>
+      <p class="m-0">
+        <strong>Para donar necesitás una billetera digital.</strong><br />
+        Es dinero de prueba: la demo no usa plata real.
+      </p>
+      <button type="button" class="boton-ladrillo camino presionable cursor-pointer px-4 py-3 font-bold uppercase tracking-wider" data-probar-prueba>
+        Probá ahora con una billetera de prueba
+      </button>
+      <small class="recomendado">Recomendado: se crea sola en tu navegador, no tenés que instalar nada.</small>
+      <button type="button" class="boton-neon camino presionable cursor-pointer px-4 py-3 font-bold uppercase tracking-wider" data-usar-freighter>
+        Ya tengo Freighter
+      </button>
+      <details class="como-preparo">
+        <summary>¿Cómo preparo Freighter?</summary>
+        <ol>
+          <li>Instalá la extensión gratis desde <strong>freighter.app</strong> y creá tu cuenta.</li>
+          <li>Abrí la extensión y tocá <strong>"Fund with Friendbot"</strong>: te regala monedas de mentira para activar la cuenta.</li>
+          <li>En <strong>"Manage assets"</strong> agregá USDC. Listo: ya podés donar de mentira.</li>
+        </ol>
+      </details>
+      <p class="estado" data-onboarding-estado role="status" hidden></p>
+      <p class="error" data-onboarding-error role="alert" hidden></p>
+    </div>
+    <p class="wallet-lista m-0" data-wallet-lista hidden>✓ Billetera lista: <strong data-wallet-abreviada></strong></p>
+
     <fieldset class="monto">
       <legend>¿Cuánto querés aportar? <small>(mínimo <span data-donar-minimo>—</span>)</small></legend>
+      <p class="usdc-nota m-0"><small>USDC = dólares digitales; en esta demo son de prueba.</small></p>
       <div class="sugeridos">
-        {MONTOS_SUGERIDOS.map((m) => <button type="button" class="sugerido" data-monto={m}>{m} USDC</button>)}
+        {MONTOS_SUGERIDOS.map((m) => <button type="button" class="sugerido presionable" data-monto={m} aria-pressed="false">{m} USDC</button>)}
       </div>
       <label class="otro">
         Otro monto
@@ -44,25 +70,27 @@ const MONTO_INICIAL = '5';
     <label class="consentimiento">
       <input type="checkbox" name="consentimiento" required />
       <span>
-        Entiendo que mi recuerdo, la foto y el alias quedan públicos en IPFS y vinculados a la red Stellar, y que no se
-        pueden borrar. No subo fotos de menores, datos sensibles ni contenido de terceros sin permiso.
+        Entiendo que mi recuerdo, la foto y el alias quedan <strong>públicos para siempre en internet</strong> y
+        <strong>no se pueden borrar</strong> (se guardan en IPFS, una red pública de archivos). No subo fotos de menores,
+        datos sensibles ni contenido de terceros sin permiso.
       </span>
     </label>
 
     <p class="estado" data-donar-estado role="status" hidden></p>
     <p class="error" data-donar-error role="alert" hidden></p>
 
-    <Boton type="submit" data-donar-enviar>Donar</Boton>
+    <Boton type="submit" data-donar-enviar class="presionable brillo-neon" disabled>Donar</Boton>
   </form>
 
-  <div class="exito" data-donar-exito hidden>
+  <div class="exito" data-donar-exito hidden role="status" aria-live="polite">
+    <h3 class="m-0 titulo-exito" tabindex="-1" data-exito-titulo>¡Adoptaste tu ladrillo!</h3>
     <p>
-      ¡Adoptaste el ladrillo <strong data-exito-id></strong> con <strong data-exito-monto></strong>! Tu recuerdo ya es
+      El ladrillo <strong data-exito-id></strong> ya es tuyo con <strong data-exito-monto></strong>. Tu recuerdo ya es
       parte de la memoria del mural.
     </p>
     <p class="enlaces">
-      <a data-exito-ladrillo href="/">Ver mi ladrillo</a>
-      <a data-exito-tx href="/" target="_blank" rel="noopener">Ver transacción</a>
+      <a data-exito-ladrillo class="presionable" href="/">Ver mi ladrillo</a>
+      <a data-exito-tx class="presionable" href="/" target="_blank" rel="noopener">Ver el comprobante público</a>
     </p>
   </div>
 </Modal>
@@ -71,11 +99,12 @@ const MONTO_INICIAL = '5';
   import { datos } from '../../lib/datos';
   import { emitir, escuchar } from '../../lib/eventos';
   import { MAX_IMAGEN_BYTES, TIPOS_IMAGEN, subirRecuerdo } from '../../lib/ipfs';
-  import { ErrorNegocio, traducirError } from '../../lib/stellar/errores';
+  import { ErrorNegocio, MENSAJE_CANCELADO_TRAS_SUBIR, esRechazo, traducirError } from '../../lib/stellar/errores';
   import { donar, urlTransaccion, type EtapaTx } from '../../lib/stellar/transacciones';
   import { conectarYAvisar } from '../../lib/stellar/sesion';
-  import { direccionActual } from '../../lib/stellar/wallet';
-  import { formatearUsdc, parsearUsdc, usdcATexto } from '../../lib/tipos';
+  import { abreviar, conectarPrueba, direccionActual } from '../../lib/stellar/wallet';
+  import type { EtapaPrueba } from '../../lib/stellar/wallet-prueba';
+  import { errorMontoUsdc, formatearUsdc, parsearUsdc, usdcATexto } from '../../lib/tipos';
 
   const modal = document.getElementById('modal-donar') as HTMLDialogElement;
   const $ = <T extends HTMLElement>(sel: string) => modal.querySelector(sel) as T;
@@ -91,18 +120,81 @@ const MONTO_INICIAL = '5';
   const estado = $('[data-donar-estado]');
   const error = $('[data-donar-error]');
   const exito = $('[data-donar-exito]');
+  const onboarding = $('[data-onboarding]');
+  const onboardingEstado = $('[data-onboarding-estado]');
+  const onboardingError = $('[data-onboarding-error]');
+  const walletLista = $('[data-wallet-lista]');
 
   const MENSAJES_ETAPA: Record<EtapaTx, string> = {
-    firmando: 'Confirmá la donación en tu wallet…',
-    enviando: 'Enviando a la red Stellar…',
+    firmando: 'Confirmá la donación en tu billetera…',
+    enviando: 'Confirmando tu donación, unos segundos…',
+  };
+  const MENSAJES_PRUEBA: Record<EtapaPrueba, string> = {
+    fondeando: 'Creando tu billetera de prueba y activándola en la red…',
+    trustline: 'Preparando tu billetera para recibir USDC…',
+    usdc: 'Pidiendo tus USDC de prueba…',
   };
 
   let ladrilloId: number | null = null;
   let minimo = 0n;
+  let minimoCargado = false;
+  let cidGuardado: string | null = null;
+  let huellaCid = '';
+  let huboSubida = false;
 
   function mostrar(el: HTMLElement, contenido: string | null) {
     el.hidden = !contenido;
     el.textContent = contenido ?? '';
+    if (contenido) {
+      el.classList.remove('pulso');
+      void el.offsetWidth;
+      el.classList.add('pulso');
+    }
+  }
+
+  function celebrar() {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:10';
+    modal.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return canvas.remove();
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = innerWidth * dpr;
+    canvas.height = innerHeight * dpr;
+    const colores = ['#ff3d9a', '#8b5cf6', '#ffb547', '#38e1ff', '#f3ede4'];
+    const particulas = Array.from({ length: 90 }, () => ({
+      x: (innerWidth / 2) * dpr + (Math.random() - 0.5) * innerWidth * 0.5 * dpr,
+      y: innerHeight * 0.35 * dpr,
+      vx: (Math.random() - 0.5) * 12 * dpr,
+      vy: (-Math.random() * 11 - 4) * dpr,
+      lado: (Math.random() * 6 + 4) * dpr,
+      color: colores[Math.floor(Math.random() * colores.length)],
+      rot: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 0.3,
+    }));
+    let frames = 0;
+    (function animar() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let vivas = false;
+      for (const p of particulas) {
+        p.vy += 0.35 * dpr;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vr;
+        if (p.y < canvas.height + 20 * dpr) vivas = true;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.globalAlpha = Math.max(0, 1 - frames / 130);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.lado / 2, -p.lado / 2, p.lado, p.lado * 0.6);
+        ctx.restore();
+      }
+      frames++;
+      if (vivas && frames < 150) requestAnimationFrame(animar);
+      else canvas.remove();
+    })();
   }
 
   function montoActual(): bigint | null {
@@ -112,51 +204,122 @@ const MONTO_INICIAL = '5';
   function actualizarMonto() {
     const monto = montoActual();
     enviar.textContent = monto && monto >= minimo ? `Donar ${formatearUsdc(monto)}` : 'Donar';
-    sugeridos.forEach((b) => b.classList.toggle('activo', parsearUsdc(b.dataset.monto!) === monto));
+    sugeridos.forEach((b) => {
+      const activo = parsearUsdc(b.dataset.monto!) === monto;
+      b.classList.toggle('activo', activo);
+      b.setAttribute('aria-pressed', String(activo));
+    });
+  }
+
+  function actualizarEnvio() {
+    enviar.disabled = !minimoCargado;
   }
 
   function aplicarMinimo() {
     sugeridos.forEach((b) => (b.hidden = parsearUsdc(b.dataset.monto!)! < minimo));
-    const inicial = montoActual();
-    if (inicial === null || inicial < minimo) montoInput.value = usdcATexto(minimo);
+    const actual = montoActual();
+    if (actual === null || actual < minimo) montoInput.value = usdcATexto(minimo);
+  }
+
+  function huella(): string {
+    return JSON.stringify([texto.value, alias.value, imagen.files?.[0]?.name ?? '', imagen.files?.[0]?.size ?? 0]);
+  }
+
+  function invalidarCid() {
+    if (huella() !== huellaCid) cidGuardado = null;
+  }
+
+  function marcarCampo(campo: HTMLElement | null, invalido: boolean) {
+    if (!campo) return;
+    campo.setAttribute('aria-invalid', String(invalido));
+    if (invalido) campo.setAttribute('aria-describedby', 'donar-error-texto');
+    else campo.removeAttribute('aria-describedby');
+  }
+
+  function limpiarInvalidos() {
+    [montoInput, texto, imagen, consentimiento].forEach((c) => marcarCampo(c, false));
   }
 
   function reiniciar() {
     form.reset();
-    aplicarMinimo();
     form.hidden = false;
     exito.hidden = true;
+    exito.classList.remove('aparecer');
+    cidGuardado = null;
+    huellaCid = '';
+    huboSubida = false;
     $('[data-donar-contador]').textContent = '0';
     mostrar(estado, null);
     mostrar(error, null);
+    mostrar(onboardingEstado, null);
+    mostrar(onboardingError, null);
+    limpiarInvalidos();
     enviar.disabled = false;
+    aplicarMinimo();
     actualizarMonto();
+    actualizarEnvio();
   }
 
-  function validar(): string | null {
+  function validar(): { mensaje: string; campo: HTMLElement } | null {
     const monto = montoActual();
-    if (monto === null) return 'Ingresá un monto válido, por ejemplo 5 o 2,50.';
-    if (monto < minimo) return `El aporte mínimo es ${formatearUsdc(minimo)}.`;
-    if (!texto.value.trim()) return 'Escribí un recuerdo para tu ladrillo.';
+    if (monto === null) {
+      return { mensaje: errorMontoUsdc(montoInput.value) ?? 'Ingresá un monto válido, por ejemplo 5 o 2,50.', campo: montoInput };
+    }
+    if (monto < minimo) return { mensaje: `El aporte mínimo es ${formatearUsdc(minimo)}.`, campo: montoInput };
+    if (!texto.value.trim()) return { mensaje: 'Escribí un recuerdo para tu ladrillo.', campo: texto };
     const archivo = imagen.files?.[0];
-    if (archivo && !TIPOS_IMAGEN.includes(archivo.type)) return 'La foto tiene que ser JPG, PNG o WebP.';
-    if (archivo && archivo.size > MAX_IMAGEN_BYTES) return 'La foto no puede superar los 2 MB.';
-    if (!consentimiento.checked) return 'Confirmá que entendés que tu recuerdo queda público y no se puede borrar.';
+    if (archivo && !TIPOS_IMAGEN.includes(archivo.type)) return { mensaje: 'La foto tiene que ser JPG, PNG o WebP.', campo: imagen };
+    if (archivo && archivo.size > MAX_IMAGEN_BYTES) return { mensaje: 'La foto no puede superar los 2 MB.', campo: imagen };
+    if (!consentimiento.checked) {
+      return { mensaje: 'Confirmá que entendés que tu recuerdo queda público y no se puede borrar.', campo: consentimiento };
+    }
     return null;
+  }
+
+  async function refrescarWallet() {
+    const direccion = await direccionActual().catch(() => null);
+    onboarding.hidden = !!direccion;
+    walletLista.hidden = !direccion;
+    if (direccion) $('[data-wallet-abreviada]').textContent = abreviar(direccion);
+    return direccion;
   }
 
   async function obtenerDireccion(): Promise<string> {
     const actual = await direccionActual();
     if (actual) return actual;
-    mostrar(estado, 'Conectando tu wallet…');
+    mostrar(estado, 'Conectando tu billetera…');
     return conectarYAvisar();
+  }
+
+  function mostrarExito(id: number, monto: bigint, txHash: string) {
+    form.classList.add('saliendo');
+    setTimeout(() => {
+      form.hidden = true;
+      form.classList.remove('saliendo');
+      exito.hidden = false;
+      exito.classList.add('aparecer');
+      $('[data-exito-id]').textContent = `#${id}`;
+      $('[data-exito-monto]').textContent = formatearUsdc(monto);
+      $<HTMLAnchorElement>('[data-exito-ladrillo]').href = `/ladrillo/${id}`;
+      const enlaceTx = $<HTMLAnchorElement>('[data-exito-tx]');
+      enlaceTx.hidden = !txHash || txHash.startsWith('mock-');
+      enlaceTx.href = urlTransaccion(txHash);
+      celebrar();
+      $('[data-exito-titulo]').focus();
+    }, 200);
   }
 
   texto.addEventListener('input', () => {
     $('[data-donar-contador]').textContent = String(texto.value.length);
+    invalidarCid();
   });
+  alias.addEventListener('input', invalidarCid);
+  imagen.addEventListener('change', invalidarCid);
 
-  montoInput.addEventListener('input', actualizarMonto);
+  montoInput.addEventListener('input', () => {
+    marcarCampo(montoInput, false);
+    actualizarMonto();
+  });
   sugeridos.forEach((boton) =>
     boton.addEventListener('click', () => {
       montoInput.value = boton.dataset.monto!;
@@ -164,21 +327,68 @@ const MONTO_INICIAL = '5';
     }),
   );
 
+  $('[data-probar-prueba]').addEventListener('click', async () => {
+    mostrar(onboardingError, null);
+    onboarding.querySelectorAll('button').forEach((b) => (b.disabled = true));
+    try {
+      const { direccion, avisoUsdc } = await conectarPrueba((etapa) => mostrar(onboardingEstado, MENSAJES_PRUEBA[etapa]));
+      mostrar(onboardingEstado, null);
+      emitir('pv:wallet-cambiada', { direccion });
+      if (avisoUsdc) mostrar(onboardingError, avisoUsdc);
+      await refrescarWallet();
+    } catch (e) {
+      mostrar(onboardingEstado, null);
+      mostrar(onboardingError, traducirError(e));
+    } finally {
+      onboarding.querySelectorAll('button').forEach((b) => (b.disabled = false));
+    }
+  });
+
+  $('[data-usar-freighter]').addEventListener('click', async () => {
+    mostrar(onboardingError, null);
+    mostrar(onboardingEstado, 'Conectando con Freighter…');
+    try {
+      await conectarYAvisar();
+      mostrar(onboardingEstado, null);
+      await refrescarWallet();
+    } catch (e) {
+      mostrar(onboardingEstado, null);
+      mostrar(onboardingError, traducirError(e));
+    }
+  });
+
   escuchar('pv:ladrillo-seleccionado', async ({ id }) => {
     ladrilloId = id;
     $('[data-donar-id]').textContent = `#${id}`;
-    minimo = (await datos.obtenerCampania()).aporteMinimo;
-    $('[data-donar-minimo]').textContent = formatearUsdc(minimo);
+    minimoCargado = false;
     reiniciar();
     modal.showModal();
+    montoInput.focus();
+    refrescarWallet();
+    try {
+      minimo = (await datos.obtenerCampania()).aporteMinimo;
+      $('[data-donar-minimo]').textContent = formatearUsdc(minimo);
+      aplicarMinimo();
+    } finally {
+      minimoCargado = true;
+      actualizarEnvio();
+      actualizarMonto();
+    }
   });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (ladrilloId === null) return;
+    limpiarInvalidos();
     const invalido = validar();
-    mostrar(error, invalido);
-    if (invalido) return;
+    if (invalido) {
+      error.id = 'donar-error-texto';
+      mostrar(error, invalido.mensaje);
+      marcarCampo(invalido.campo, true);
+      invalido.campo.focus();
+      return;
+    }
+    mostrar(error, null);
 
     const id = ladrilloId;
     const monto = montoActual()!;
@@ -187,27 +397,29 @@ const MONTO_INICIAL = '5';
       const donante = await obtenerDireccion();
       if (await datos.obtenerLadrillo(id)) throw new ErrorNegocio('Ese ladrillo ya fue adoptado. Elegí otro libre en el mural.');
 
-      mostrar(estado, 'Guardando tu recuerdo…');
-      const cid = await subirRecuerdo(texto.value.trim(), imagen.files?.[0], alias.value.trim() || undefined);
+      invalidarCid();
+      if (!cidGuardado) {
+        mostrar(estado, 'Guardando tu recuerdo de forma pública…');
+        cidGuardado = await subirRecuerdo(texto.value.trim(), imagen.files?.[0], alias.value.trim() || undefined);
+        huellaCid = huella();
+        huboSubida = true;
+      }
+      const cid = cidGuardado;
 
       const { valor: ladrillo, txHash } = await donar(donante, id, cid, monto, (etapa) =>
         mostrar(estado, MENSAJES_ETAPA[etapa]),
       );
 
       emitir('pv:donacion-confirmada', { ladrillo, txHash });
-      form.hidden = true;
-      exito.hidden = false;
-      $('[data-exito-id]').textContent = `#${id}`;
-      $('[data-exito-monto]').textContent = formatearUsdc(monto);
-      $<HTMLAnchorElement>('[data-exito-ladrillo]').href = `/ladrillo/${id}`;
-      const enlaceTx = $<HTMLAnchorElement>('[data-exito-tx]');
-      enlaceTx.hidden = !txHash || txHash.startsWith('mock-');
-      enlaceTx.href = urlTransaccion(txHash);
+      cidGuardado = null;
+      mostrarExito(id, monto, txHash);
     } catch (err) {
       mostrar(estado, null);
-      mostrar(error, traducirError(err));
+      error.id = 'donar-error-texto';
+      mostrar(error, huboSubida && esRechazo(err) ? MENSAJE_CANCELADO_TRAS_SUBIR : traducirError(err));
     } finally {
       enviar.disabled = false;
+      actualizarEnvio();
     }
   });
 </script>
@@ -218,6 +430,13 @@ const MONTO_INICIAL = '5';
     flex-direction: column;
     gap: var(--espacio);
     margin-top: var(--espacio);
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+  }
+  .donar.saliendo {
+    opacity: 0;
+    transform: translateY(8px);
   }
   label {
     display: flex;
@@ -231,7 +450,29 @@ const MONTO_INICIAL = '5';
     font-weight: 400;
     padding: 0.5rem;
     border: 1px solid var(--color-borde);
-    border-radius: var(--radio);
+    border-radius: var(--radius-md, 0.5rem);
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  textarea:focus,
+  input[type='text']:focus {
+    border-color: var(--color-secundario);
+    box-shadow: 0 0 0 3px rgb(139 92 246 / 0.25);
+    outline: none;
+  }
+  [aria-invalid='true'] {
+    border-color: var(--color-primario) !important;
+    outline: 2px solid var(--color-primario);
+  }
+  .pulso {
+    animation: pulso-in 0.25s ease-out;
+  }
+  @keyframes pulso-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
   }
   .consentimiento {
     flex-direction: row;
@@ -251,9 +492,42 @@ const MONTO_INICIAL = '5';
   .resumen {
     margin: 0;
   }
+  .onboarding {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    border: 1px dashed var(--color-secundario);
+    border-radius: var(--radius-xl, 1rem);
+    padding: var(--espacio);
+  }
+  .camino {
+    border: none;
+    border-radius: var(--radius-md, 0.5rem);
+    text-align: center;
+  }
+  .camino:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+  .recomendado {
+    opacity: 0.75;
+    margin-top: -0.4rem;
+  }
+  .como-preparo summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .como-preparo ol {
+    margin: 0.5rem 0 0;
+    padding-left: 1.2rem;
+    font-weight: 400;
+  }
+  .wallet-lista {
+    color: var(--color-secundario);
+  }
   .monto {
     border: 1px solid var(--color-borde);
-    border-radius: var(--radio);
+    border-radius: var(--radius-xl, 1rem);
     padding: var(--espacio);
     margin: 0;
     display: flex;
@@ -268,6 +542,9 @@ const MONTO_INICIAL = '5';
     font-weight: 400;
     opacity: 0.7;
   }
+  .usdc-nota {
+    opacity: 0.75;
+  }
   .sugeridos {
     display: flex;
     gap: 0.5rem;
@@ -278,13 +555,17 @@ const MONTO_INICIAL = '5';
     font: inherit;
     padding: 0.5rem;
     border: 1px solid var(--color-secundario);
-    border-radius: var(--radio);
+    border-radius: var(--radius-md, 0.5rem);
     background: transparent;
     color: var(--color-secundario);
     cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
   }
   .sugerido.activo {
-    background: var(--color-secundario);
+    background: #6d28d9;
+    border-color: #6d28d9;
     color: white;
   }
   .otro {
@@ -305,6 +586,27 @@ const MONTO_INICIAL = '5';
   .error {
     margin: 0;
     color: var(--color-primario);
+  }
+  .exito .titulo-exito {
+    animation: entrada-exito 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
+  }
+  @keyframes entrada-exito {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .donar,
+    .sugerido,
+    textarea,
+    input[type='text'] {
+      transition: none;
+    }
+    .pulso,
+    .exito .titulo-exito {
+      animation: none;
+    }
   }
   .enlaces {
     display: flex;

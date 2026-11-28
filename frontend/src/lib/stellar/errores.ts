@@ -2,7 +2,7 @@ export const ERRORES_CONTRATO: Record<number, string> = {
   1: 'La campaña no está recibiendo donaciones.',
   2: 'Ese ladrillo ya fue adoptado. Elegí otro.',
   3: 'El ladrillo no existe.',
-  4: 'Tu wallet no es uno de los firmantes.',
+  4: 'Tu billetera no es una de las firmantes.',
   5: 'Ya aprobaste este hito.',
   6: 'Ese no es el próximo hito pendiente.',
   7: 'La campaña todavía no alcanzó la meta.',
@@ -10,23 +10,31 @@ export const ERRORES_CONTRATO: Record<number, string> = {
   9: 'No tenés aportes para reembolsar.',
   20: 'El monto es menor al aporte mínimo.',
   21: 'No se pudo registrar tu recuerdo (llegó vacío o demasiado largo). Probá guardarlo de nuevo.',
-  22: 'Solo los otros firmantes de la campaña pueden rotar a un firmante.',
+  22: 'Solo los otros firmantes de la campaña pueden cambiar a un firmante.',
 };
 
 const ERRORES_TOKEN: Record<number, string> = {
-  10: 'No tenés saldo suficiente de USDC para esta donación.',
-  13: 'Tu wallet todavía no acepta USDC. Agregá el asset USDC en Freighter (Manage assets) y probá de nuevo.',
+  10: 'No tenés saldo suficiente de USDC para esta donación. Si usás la billetera de prueba, pedí más desde el panel de tu billetera.',
+  13: 'Tu billetera todavía no está lista para usar USDC. Si usás Freighter, agregá USDC desde "Manage assets" y probá de nuevo; con la billetera de prueba esto se hace solo.',
 };
 
 export type TipoErrorWallet = 'sin-freighter' | 'rechazado' | 'red-equivocada' | 'sin-conexion' | 'desconocido';
 
 const MENSAJES_WALLET: Record<TipoErrorWallet, string> = {
-  'sin-freighter': 'No encontramos Freighter. Instalala desde freighter.app o creá una wallet de prueba desde «Conectar wallet».',
-  rechazado: 'Cancelaste la solicitud en Freighter.',
-  'red-equivocada': 'Freighter está en otra red. Cambiala a Testnet y probá de nuevo.',
-  'sin-conexion': 'Primero conectá tu wallet.',
+  'sin-freighter': 'No encontramos Freighter. Instalala desde freighter.app o creá una billetera de prueba desde «Conectar billetera».',
+  rechazado: 'Cancelaste la solicitud en Freighter. No se movió tu dinero.',
+  'red-equivocada': 'Freighter está apuntando a otra red. Cambiala a Testnet (la red de prueba) y probá de nuevo.',
+  'sin-conexion': 'Primero conectá tu billetera.',
   desconocido: 'Freighter devolvió un error inesperado.',
 };
+
+/** Mensaje para cuando se cancela la firma después de haber subido el recuerdo a IPFS. */
+export const MENSAJE_CANCELADO_TRAS_SUBIR =
+  'Cancelaste la solicitud en Freighter. Tu recuerdo quedó guardado pero no se publicó en el mural: no se movió tu dinero.';
+
+export function esRechazo(e: unknown): boolean {
+  return e instanceof ErrorWallet && e.tipo === 'rechazado';
+}
 
 export class ErrorWallet extends Error {
   constructor(
@@ -64,9 +72,13 @@ export function traducirError(e: unknown): string {
   const codigo = Number(mensaje.match(/Error\(Contract, #(\d+)\)/)?.[1]);
   if (ERRORES_CONTRATO[codigo]) return ERRORES_CONTRATO[codigo];
   if (ERRORES_TOKEN[codigo]) return ERRORES_TOKEN[codigo];
-  if (/account not found/i.test(mensaje)) return 'Tu cuenta no existe en Testnet. Fondeala con Friendbot desde el panel de tu wallet.';
-  if (/insufficient.?balance|tx_insufficient_fee/i.test(mensaje)) return 'No tenés XLM suficiente para pagar la comisión.';
+  if (/account not found/i.test(mensaje)) {
+    return 'Tu cuenta todavía no existe en la red de prueba. Fondeala con Friendbot desde el panel de tu billetera; con la billetera de prueba esto se hace solo.';
+  }
+  if (/insufficient.?balance|tx_insufficient_fee/i.test(mensaje)) {
+    return 'Te falta saldo para la comisión de la red (es mínima y en esta demo es de mentira). Fondeá tu cuenta desde el panel de tu billetera; con la billetera de prueba esto se hace solo.';
+  }
   if (/Falta el ID del contrato/.test(mensaje)) return 'El contrato todavía no está desplegado.';
   console.error(e);
-  return 'Ocurrió un error inesperado. Probá de nuevo.';
+  return 'Ocurrió un error inesperado. Probá de nuevo; si sigue fallando, recargá la página o probá con la billetera de prueba.';
 }

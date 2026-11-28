@@ -1,0 +1,93 @@
+---
+/**
+ * Toast — avisos breves en pantalla. Va montado una sola vez en Base.astro.
+ * Para mostrar un aviso desde cualquier script:
+ *   window.dispatchEvent(new CustomEvent('pv:toast', { detail: { mensaje: 'Listo', tipo: 'exito' } }))
+ * tipos: 'exito' | 'error' | 'info' (default 'info'). Se cierra solo a los 4,5 s o al hacer clic.
+ */
+---
+
+<div class="toasts" role="status" aria-live="polite"></div>
+
+<script>
+  type TipoToast = 'exito' | 'error' | 'info';
+
+  const contenedor = document.querySelector<HTMLElement>('.toasts');
+  const ICONOS: Record<TipoToast, string> = { exito: '✓', error: '✕', info: 'ℹ' };
+
+  window.addEventListener('pv:toast', (evento) => {
+    const detalle = (evento as CustomEvent).detail ?? {};
+    const mensaje = String(detalle.mensaje ?? '');
+    if (!mensaje || !contenedor) return;
+    const tipo: TipoToast = ['exito', 'error', 'info'].includes(detalle.tipo) ? detalle.tipo : 'info';
+
+    const toast = document.createElement('p');
+    toast.className = `toast toast-${tipo} aparecer`;
+    const icono = document.createElement('span');
+    icono.className = 'toast-icono';
+    icono.textContent = ICONOS[tipo];
+    icono.setAttribute('aria-hidden', 'true');
+    toast.append(icono, document.createTextNode(mensaje));
+    toast.addEventListener('click', () => toast.remove());
+    contenedor.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add('saliendo');
+      setTimeout(() => toast.remove(), 300);
+    }, 4500);
+  });
+</script>
+
+<style>
+  .toasts {
+    position: fixed;
+    bottom: 3rem;
+    right: 1rem;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: min(90vw, 360px);
+    pointer-events: none;
+  }
+  .toast {
+    pointer-events: auto;
+    cursor: pointer;
+    margin: 0;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    background: var(--color-carbon);
+    border: 2px solid var(--color-junta);
+    color: var(--color-texto);
+    font-size: 0.875rem;
+    box-shadow: 4px 4px 0 var(--color-sombra);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  .toast.saliendo {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  .toast-icono {
+    font-weight: 700;
+  }
+  .toast-exito {
+    border-color: var(--color-ambar);
+  }
+  .toast-exito .toast-icono {
+    color: var(--color-ambar);
+  }
+  .toast-error {
+    border-color: var(--color-rosa);
+  }
+  .toast-error .toast-icono {
+    color: var(--color-rosa);
+  }
+  .toast-info {
+    border-color: var(--color-celeste);
+  }
+  .toast-info .toast-icono {
+    color: var(--color-celeste);
+  }
+</style>

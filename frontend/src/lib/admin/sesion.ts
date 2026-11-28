@@ -81,3 +81,41 @@ export function cookieDeSesion(token: string): string {
 export function cookieDeCierre(): string {
   return `${NOMBRE_COOKIE}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0`;
 }
+
+/**
+ * Desafíos de un solo uso para entrar con billetera: el servidor propone un texto
+ * aleatorio, la billetera lo firma y el login lo consume. Expiran en 2 minutos.
+ */
+const DURACION_DESAFIO_MS = 2 * 60 * 1000;
+
+interface Desafio {
+  expira: number;
+}
+
+const desafios = new Map<string, Desafio>();
+
+export function crearDesafio(host: string): string {
+  const nonce = randomBytes(16).toString('hex');
+  const texto = `Pared Viva admin · ${host} · ${nonce} · ${new Date().toISOString()}`;
+  desafios.set(texto, { expira: Date.now() + DURACION_DESAFIO_MS });
+  // limpieza oportunista de desafíos vencidos
+  const ahora = Date.now();
+  for (const [t, d] of desafios) if (d.expira <= ahora) desafios.delete(t);
+  return texto;
+}
+
+/** Desafíos activos (no vencidos), para verificar una firma contra cada uno. */
+export function desafiosActivos(): string[] {
+  const ahora = Date.now();
+  const activos: string[] = [];
+  for (const [texto, d] of desafios) {
+    if (d.expira <= ahora) desafios.delete(texto);
+    else activos.push(texto);
+  }
+  return activos;
+}
+
+/** Consume un desafío una vez usado con éxito: no se puede reutilizar. */
+export function consumirDesafio(texto: string): void {
+  desafios.delete(texto);
+}

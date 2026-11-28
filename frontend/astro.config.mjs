@@ -16,8 +16,10 @@ export default defineConfig({
       FIRMANTE3_SECRETO: envField.string({ context: 'server', access: 'secret', optional: true }),
       ADMIN_WEB: envField.boolean({ context: 'server', access: 'secret', optional: true, default: false }),
       ADMIN_CLAVE: envField.string({ context: 'server', access: 'secret', optional: true }),
+      ADMIN_DIRECCIONES: envField.string({ context: 'server', access: 'secret', optional: true }),
       ADMIN_SECRETO: envField.string({ context: 'server', access: 'secret', optional: true }),
       PARED_VIVA_WASM: envField.string({ context: 'server', access: 'secret', optional: true }),
+      RESTAURADOR_DIRECCION: envField.string({ context: 'server', access: 'secret', optional: true }),
     },
   },
   vite: {

@@ -346,7 +346,7 @@ const obras = [
 
     function paso() {
       const ahora = performance.now();
-      if (automatico && ahora - comienzo > DURACION_TOTAL + PAUSA) formar(ORDEN[(ORDEN.indexOf(obraActual) + 1) % ORDEN.length]);
+      if (!quieto() && automatico && ahora - comienzo > DURACION_TOTAL + PAUSA) formar(ORDEN[(ORDEN.indexOf(obraActual) + 1) % ORDEN.length]);
       avance.style.width = `${Math.min(100, ((ahora - comienzo) / DURACION_TOTAL) * 100)}%`;
 
       for (let i = 0; i < N; i++) {
@@ -388,19 +388,28 @@ const obras = [
     renderer.setAnimationLoop(paso);
     corriendo = true;
     sincronizarLoop();
+    if (!corriendo) paso();
   }
 
   let iniciado = false;
 
   async function arrancar() {
-    if (iniciado || mediaMovimiento.matches) return;
-    const THREE = await import('three');
-    if (mediaMovimiento.matches) {
+    if (iniciado) return;
+    iniciado = true;
+    let THREE: Tres;
+    try {
+      THREE = await import('three');
+    } catch {
       prepararFallbacks();
       return;
     }
-    iniciado = true;
-    document.querySelectorAll<HTMLElement>('.calle-arte').forEach((s) => iniciar(s, THREE));
+    document.querySelectorAll<HTMLElement>('.calle-arte').forEach((s) => {
+      try {
+        iniciar(s, THREE);
+      } catch {
+        prepararFallback(s);
+      }
+    });
   }
 
   function programarArranque() {
@@ -408,16 +417,7 @@ const obras = [
     else setTimeout(() => void arrancar(), 250);
   }
 
-  if (mediaMovimiento.matches) prepararFallbacks();
-  else programarArranque();
-
-  mediaMovimiento.addEventListener('change', () => {
-    if (mediaMovimiento.matches) {
-      if (!iniciado) prepararFallbacks();
-    } else {
-      programarArranque();
-    }
-  });
+  programarArranque();
 </script>
 
 <style>

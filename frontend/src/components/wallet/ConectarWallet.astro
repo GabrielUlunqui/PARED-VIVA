@@ -9,7 +9,7 @@
     aria-label="Conectá tu billetera para donar"
     title="Conectá tu billetera para donar"
   >
-    Conectar wallet
+    Conectar billetera
   </button>
   <button
     id="wallet-chip"
@@ -28,22 +28,22 @@
     <span class="flecha" aria-hidden="true">▾</span>
   </button>
 
-  <div id="wallet-opciones" class="panel cartel" role="dialog" aria-label="Elegí una wallet" hidden>
-    <span class="etiqueta">Elegí una wallet</span>
+  <div id="wallet-opciones" class="panel cartel" role="dialog" aria-label="Elegí una billetera" hidden>
+    <span class="etiqueta">Elegí una billetera</span>
     <button type="button" class="opcion presionable" data-opcion-freighter>
       <strong>Freighter</strong>
-      <small>Extensión del navegador, en Testnet.</small>
+      <small>Billetera gratuita para el navegador, en Testnet.</small>
     </button>
     <button type="button" class="opcion presionable" data-opcion-prueba>
-      <strong data-prueba-titulo>Crear wallet de prueba</strong>
+      <strong data-prueba-titulo>Crear billetera de prueba</strong>
       <small data-prueba-detalle></small>
     </button>
     <p class="nota" data-progreso role="status" hidden></p>
   </div>
 
-  <div id="wallet-panel" class="panel cartel" role="dialog" aria-label="Tu wallet" hidden>
+  <div id="wallet-panel" class="panel cartel" role="dialog" aria-label="Tu billetera" hidden>
     <div class="panel-cabecera">
-      <span class="etiqueta" data-tipo-wallet>Tu wallet · Testnet</span>
+      <span class="etiqueta" data-tipo-wallet>Tu billetera · Testnet</span>
       <button type="button" class="icono" data-refrescar title="Actualizar saldos" aria-label="Actualizar saldos">↻</button>
     </div>
 
@@ -67,7 +67,7 @@
     <button type="button" class="boton-ladrillo fondear presionable" data-fondear hidden>Fondear con Friendbot</button>
     <button type="button" class="boton-ladrillo fondear presionable" data-pedir-usdc hidden></button>
     <small class="pista" data-pista-prueba hidden>
-      La clave de esta wallet vive solo en este navegador. Usala únicamente para probar en testnet.
+      La clave de esta billetera vive solo en este navegador. Usala únicamente para probar en testnet.
     </small>
 
     <div class="acciones">
@@ -104,7 +104,7 @@
   const TEXTO_PEDIR_USDC = `Pedir ${MONTO_GRIFO_USDC} USDC de prueba`;
   const ETAPAS_PRUEBA: Record<EtapaPrueba, string> = {
     fondeando: 'Creando la cuenta y fondeándola con XLM (Friendbot)…',
-    trustline: 'Habilitando USDC en la wallet…',
+    trustline: 'Habilitando USDC en la billetera…',
     usdc: `Pidiendo ${MONTO_GRIFO_USDC} USDC de prueba…`,
   };
 
@@ -164,8 +164,8 @@
     if (enUsdc !== null) return mostrarNota(null);
     mostrarNota(
       tipo === 'prueba'
-        ? 'Falta habilitar USDC. Desconectá y elegí «Usar mi wallet de prueba» para terminar la configuración.'
-        : 'Tu wallet todavía no acepta USDC. En Freighter tocá «+ Add token» y agregá el USDC de la app.',
+        ? 'Falta habilitar USDC. Desconectá y elegí «Usar mi billetera de prueba» para terminar la configuración.'
+        : 'Tu billetera todavía no acepta USDC. En Freighter tocá «+ Add token» y agregá el USDC de la app.',
     );
   }
 
@@ -195,7 +195,7 @@
     if (cual === panel) refrescarSaldos();
     if (cual === opciones) {
       const existente = !!walletPrueba();
-      $('[data-prueba-titulo]').textContent = existente ? 'Usar mi wallet de prueba' : 'Crear wallet de prueba';
+      $('[data-prueba-titulo]').textContent = existente ? 'Usar mi billetera de prueba' : 'Crear billetera de prueba';
       $('[data-prueba-detalle]').textContent = existente
         ? 'La que ya creaste en este navegador.'
         : `Sin instalar nada: se guarda en este navegador y recibe XLM y ${MONTO_GRIFO_USDC} USDC de testnet.`;
@@ -212,7 +212,7 @@
     if (direccion) {
       $('[data-direccion-corta]').textContent = abreviar(direccion);
       $('[data-direccion-completa]').textContent = direccion;
-      $('[data-tipo-wallet]').textContent = tipo === 'prueba' ? 'Wallet de prueba · Testnet' : 'Freighter · Testnet';
+      $('[data-tipo-wallet]').textContent = tipo === 'prueba' ? 'Billetera de prueba · Testnet' : 'Freighter · Testnet';
       $<HTMLAnchorElement>('[data-explorador]').href = `${RED.explorador}/account/${direccion}`;
       chip.title = direccion;
     } else {

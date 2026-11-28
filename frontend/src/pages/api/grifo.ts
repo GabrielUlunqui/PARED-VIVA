@@ -40,8 +40,8 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 
   const { xlm, usdc } = await leerSaldos(direccion);
   if (xlm === null) return responder({ error: 'La cuenta todavía no existe en testnet. Fondeala primero con Friendbot.' }, 400);
-  if (usdc === null) return responder({ error: 'La wallet todavía no acepta USDC: falta agregar la trustline.' }, 400);
-  if (usdc >= SALDO_MAXIMO) return responder({ error: 'Esta wallet ya tiene USDC de prueba suficiente.' }, 409);
+  if (usdc === null) return responder({ error: 'La billetera todavía no acepta USDC: falta agregar la trustline.' }, 400);
+  if (usdc >= SALDO_MAXIMO) return responder({ error: 'Esta billetera ya tiene USDC de prueba suficiente.' }, 409);
   if (limiteSuperado(clientAddress)) {
     return responder({ error: 'Pediste USDC demasiadas veces. Probá de nuevo en una hora.' }, 429);
   }

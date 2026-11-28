@@ -5,8 +5,11 @@
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { FIRMANTE1_SECRETO, FIRMANTE2_SECRETO, FIRMANTE3_SECRETO } from 'astro:env/server';
 import { Keypair, StrKey } from '@stellar/stellar-sdk';
 import { CONTRATOS } from '../../contracts/config';
+
+const SECRETOS_ENV = [FIRMANTE1_SECRETO, FIRMANTE2_SECRETO, FIRMANTE3_SECRETO];
 
 const ARCHIVO = join(process.cwd(), 'data', 'registro.json');
 
@@ -33,19 +36,19 @@ interface Registro {
   wasmInstalado?: string;
 }
 
+// Ids fijos de config.ts: se registran siempre las dos, use el build el env que use.
+const ID_OFICIAL = 'CD3ZVQAQKTT3F3OW6DL6LQA4CDD4IEWGHRG4ZZDZJZTXQRJ5DIZXC6RE';
+const ID_ENSAYO = 'CCSMURJVJBEVNCULQTYHGQP7JTNWA5SZGYHQGI5WPBUV6TEQS7K2ZTTP';
+
 function semilla(): Registro {
   const campanias: CampaniaRegistrada[] = [
-    { id: CONTRATOS.paredViva, nombre: 'Campaña oficial', creada: 0, origen: 'config' },
+    { id: ID_OFICIAL, nombre: 'Campaña oficial', creada: 0, origen: 'config' },
+    { id: ID_ENSAYO, nombre: 'Campaña de ensayo', creada: 0, origen: 'config' },
   ];
-  // La de ensayo también arranca registrada para poder ensayar sin tocar la oficial.
-  const ensayo = 'CCSMURJVJBEVNCULQTYHGQP7JTNWA5SZGYHQGI5WPBUV6TEQS7K2ZTTP';
-  if (ensayo !== CONTRATOS.paredViva) {
-    campanias.push({ id: ensayo, nombre: 'Campaña de ensayo', creada: 0, origen: 'config' });
-  }
   const firmantes: FirmanteRegistrado[] = [];
   const claves: Record<string, string> = {};
   for (const n of [1, 2, 3]) {
-    const secreto = process.env[`FIRMANTE${n}_SECRETO`];
+    const secreto = SECRETOS_ENV[n - 1];
     if (secreto && StrKey.isValidEd25519SecretSeed(secreto)) {
       const direccion = Keypair.fromSecret(secreto).publicKey();
       firmantes.push({ direccion, nombre: `Firmante ${n}`, tieneClave: true });
@@ -130,8 +133,7 @@ export function claveDeFirmante(direccion: string): string | null {
   const registro = leerRegistro();
   const guardada = registro.claves[direccion];
   if (guardada && StrKey.isValidEd25519SecretSeed(guardada)) return guardada;
-  for (const n of [1, 2, 3]) {
-    const secreto = process.env[`FIRMANTE${n}_SECRETO`];
+  for (const secreto of SECRETOS_ENV) {
     if (secreto && StrKey.isValidEd25519SecretSeed(secreto) && Keypair.fromSecret(secreto).publicKey() === direccion) {
       return secreto;
     }

@@ -7,9 +7,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
-import { Keypair, nativeToScVal, Operation, rpc, scValToNative, StrKey, xdr, Address } from '@stellar/stellar-sdk';
+import { BASE_FEE, Keypair, nativeToScVal, Operation, rpc, scValToNative, StrKey, TransactionBuilder, xdr, Address } from '@stellar/stellar-sdk';
 import { CONTRATOS, RED } from '../../contracts/config';
-import { enviarOperacion } from '../stellar/clasicas';
 import { leerRegistro, guardarRegistro } from './registro';
 
 const servidor = new rpc.Server(RED.rpcUrl);
@@ -49,6 +48,33 @@ export async function wasmInstaladoEnRed(hashHex: string): Promise<boolean> {
 }
 
 /**
+ * Envía una operación soroban (upload/createCustomContract): necesita simulación y
+ * ensamblado del footprint, a diferencia de las operaciones clásicas. Devuelve el hash.
+ */
+async function enviarInvocacion(firmante: Keypair, operacion: xdr.Operation): Promise<string> {
+  const cuenta = await servidor.getAccount(firmante.publicKey());
+  const cruda = new TransactionBuilder(cuenta, { fee: BASE_FEE, networkPassphrase: RED.passphrase })
+    .addOperation(operacion)
+    .setTimeout(60)
+    .build();
+  const simulacion = await servidor.simulateTransaction(cruda);
+  if (rpc.Api.isSimulationError(simulacion)) {
+    throw new Error(`La red rechazaría esta operación: ${simulacion.error}`);
+  }
+  const armada = rpc.assembleTransaction(cruda, simulacion).build();
+  armada.sign(firmante);
+  const enviada = await servidor.sendTransaction(armada);
+  if (enviada.status !== 'PENDING') {
+    throw new Error(`La red no aceptó la transacción (${enviada.status}).`);
+  }
+  const confirmacion = await servidor.pollTransaction(enviada.hash, { attempts: 30 });
+  if (confirmacion.status !== 'SUCCESS') {
+    throw new Error(`La transacción se incluyó en la red pero falló (${confirmacion.status}).`);
+  }
+  return enviada.hash;
+}
+
+/**
  * Garantiza que el wasm parcheado esté instalado en testnet: lo sube una sola vez
  * firmado por el admin y cachea el resultado en el registro. Devuelve el hash hex.
  */
@@ -62,7 +88,7 @@ export async function asegurarWasmInstalado(secretoAdmin: string): Promise<strin
     return hash;
   }
   const admin = Keypair.fromSecret(secretoAdmin);
-  await enviarOperacion(admin, Operation.uploadContractWasm({ wasm: leerWasm() }));
+  await enviarInvocacion(admin, Operation.uploadContractWasm({ wasm: leerWasm() }));
   registro.wasmInstalado = hash;
   guardarRegistro(registro);
   return hash;
@@ -168,7 +194,7 @@ export async function desplegarCampania(p: ParametrosCampania, secretoAdmin: str
     wasmHash: Buffer.from(wasmHash, 'hex'),
     constructorArgs: [configScVal(p, admin.publicKey())],
   });
-  const hash = await enviarOperacion(admin, operacion);
+  const hash = await enviarInvocacion(admin, operacion);
 
   // El id del contrato nuevo es el valor de retorno de la invocación de creación.
   const respuesta = await servidor.getTransaction(hash);
@@ -178,4 +204,24 @@ export async function desplegarCampania(p: ParametrosCampania, secretoAdmin: str
   const id = scValToNative(respuesta.returnValue) as string;
   if (!StrKey.isValidContract(id)) throw new Error('La dirección devuelta por el despliegue no es un contrato válido.');
   return { id, hash };
+}
+
+/** Restaurador configurado en la campaña oficial (para prefill del formulario). */
+export async function restauradorDeOficial(): Promise<string | null> {
+  try {
+    const instancia = await servidor.getContractInstance(CONTRATOS.paredViva);
+    const entrada = (instancia.storage ?? []).find((e) => {
+      try {
+        const clave = scValToNative(e.key);
+        return Array.isArray(clave) && clave[0] === 'Config';
+      } catch {
+        return false;
+      }
+    });
+    if (!entrada) return null;
+    const config = scValToNative(entrada.val) as { restaurador?: unknown };
+    return config?.restaurador ? String(config.restaurador) : null;
+  } catch {
+    return null;
+  }
 }

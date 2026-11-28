@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { ADMIN_SECRETO } from 'astro:env/server';
 import { Keypair, StrKey } from '@stellar/stellar-sdk';
 import { adminHabilitado, noExiste, rechazoSiNoAdmin, json } from '../../../lib/admin/guard';
-import { hashWasmParcheado, wasmInstaladoEnRed } from '../../../lib/admin/despliegue';
+import { hashWasmParcheado, restauradorDeOficial, wasmInstaladoEnRed } from '../../../lib/admin/despliegue';
 
 export const prerender = false;
 
@@ -23,5 +23,6 @@ export const GET: APIRoute = async ({ request }) => {
   } catch (err) {
     avisoWasm = err instanceof Error ? err.message : 'No se pudo leer el wasm del contrato.';
   }
-  return json({ activo: true, admin, wasmHash, wasmInstalado, avisoWasm });
+  const restaurador = (await restauradorDeOficial()) ?? process.env.RESTAURADOR_DIRECCION ?? '';
+  return json({ activo: true, admin, wasmHash, wasmInstalado, avisoWasm, restaurador });
 };

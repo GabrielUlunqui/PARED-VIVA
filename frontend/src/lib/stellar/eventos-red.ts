@@ -1,5 +1,5 @@
 import { rpc, scValToNative, xdr } from '@stellar/stellar-sdk';
-import { CONTRATOS, RED } from '../../contracts/config';
+import { campaniaActiva, RED } from '../../contracts/config';
 import type { Ladrillo } from '../tipos';
 
 export const INTERVALO_POLLING_MS = 4000;
@@ -43,7 +43,7 @@ async function sondear(): Promise<void> {
   if (suscriptores.size === 0 || sondeando) return;
   sondeando = true;
   try {
-    const filtros = [{ type: 'contract' as const, contractIds: [CONTRATOS.paredViva], topics: [[TOPIC_DONACION, '*']] }];
+    const filtros = [{ type: 'contract' as const, contractIds: [await campaniaActiva()], topics: [[TOPIC_DONACION, '*']] }];
     if (cursor === undefined) {
       if (ledgerInicial === undefined) ledgerInicial = (await servidor.getLatestLedger()).sequence;
       const respuesta = await servidor.getEvents({ startLedger: ledgerInicial, filters: filtros, limit: 100 });

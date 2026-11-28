@@ -14,6 +14,10 @@ export default defineConfig({
       FIRMANTE1_SECRETO: envField.string({ context: 'server', access: 'secret', optional: true }),
       FIRMANTE2_SECRETO: envField.string({ context: 'server', access: 'secret', optional: true }),
       FIRMANTE3_SECRETO: envField.string({ context: 'server', access: 'secret', optional: true }),
+      ADMIN_WEB: envField.boolean({ context: 'server', access: 'secret', optional: true, default: false }),
+      ADMIN_CLAVE: envField.string({ context: 'server', access: 'secret', optional: true }),
+      ADMIN_SECRETO: envField.string({ context: 'server', access: 'secret', optional: true }),
+      PARED_VIVA_WASM: envField.string({ context: 'server', access: 'secret', optional: true }),
     },
   },
   vite: {

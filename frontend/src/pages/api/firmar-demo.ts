@@ -2,13 +2,13 @@ import type { APIRoute } from 'astro';
 import { FIRMA_DEMO, FIRMANTE1_SECRETO, FIRMANTE2_SECRETO, FIRMANTE3_SECRETO } from 'astro:env/server';
 import { Keypair, StrKey, TransactionBuilder } from '@stellar/stellar-sdk';
 import { Client } from '../../contracts/pared-viva/src/index';
-import { CONTRATOS, RED } from '../../contracts/config';
-import { clienteParedViva } from '../../lib/stellar/cliente';
+import { RED } from '../../contracts/config';
+import { campaniaActivaServidor, claveDeFirmante } from '../../lib/admin/registro';
 import { traducirError } from '../../lib/stellar/errores';
 
 export const prerender = false;
 
-const SECRETOS = [FIRMANTE1_SECRETO, FIRMANTE2_SECRETO, FIRMANTE3_SECRETO];
+const SECRETOS_ENV = [FIRMANTE1_SECRETO, FIRMANTE2_SECRETO, FIRMANTE3_SECRETO];
 const VENTANA_MS = 60 * 60 * 1000;
 const MAX_POR_IP = 20;
 
@@ -31,28 +31,49 @@ function responder(cuerpo: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(cuerpo), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
-/** Keypair del firmante N (1..3) si hay clave válida configurada; null si falta o está mal formada. */
-function parDe(numero: number): Keypair | null {
-  const secreto = SECRETOS[numero - 1];
-  if (!secreto || !StrKey.isValidEd25519SecretSeed(secreto)) return null;
-  return Keypair.fromSecret(secreto);
+/**
+ * Clave disponible para el firmante que ocupa la posición N (1..3) en el contrato:
+ * primero las variables FIRMANTE{N}_SECRETO si apuntan a esa dirección, después el registro.
+ */
+function secretoPara(direccion: string, numero: number): string | null {
+  const deEnv = SECRETOS_ENV[numero - 1];
+  if (deEnv && StrKey.isValidEd25519SecretSeed(deEnv) && Keypair.fromSecret(deEnv).publicKey() === direccion) {
+    return deEnv;
+  }
+  // Cualquier variable de entorno que apunte a esa dirección también sirve.
+  for (const secreto of SECRETOS_ENV) {
+    if (secreto && StrKey.isValidEd25519SecretSeed(secreto) && Keypair.fromSecret(secreto).publicKey() === direccion) {
+      return secreto;
+    }
+  }
+  return claveDeFirmante(direccion);
 }
 
-function demoActiva(): boolean {
-  return FIRMA_DEMO && SECRETOS.some((s) => s && StrKey.isValidEd25519SecretSeed(s));
+async function firmantesDelContrato(): Promise<string[]> {
+  const contrato = await campaniaActivaServidor();
+  const cliente = new Client({ contractId: contrato, rpcUrl: RED.rpcUrl, networkPassphrase: RED.passphrase });
+  const { result } = await cliente.firmantes();
+  return result as string[];
+}
+
+/** Firmantes del contrato activo cuya clave tiene el servidor, numerados por posición. */
+async function firmantesConClave(): Promise<{ numero: number; direccion: string; secreto: string }[]> {
+  const firmantes = await firmantesDelContrato().catch(() => [] as string[]);
+  return firmantes.slice(0, 3).flatMap((direccion, i) => {
+    const secreto = secretoPara(direccion, i + 1);
+    return secreto ? [{ numero: i + 1, direccion, secreto }] : [];
+  });
 }
 
 export const GET: APIRoute = async () => {
-  if (!demoActiva()) return responder({ activo: false });
-  const firmantes = SECRETOS.map((_, i) => {
-    const par = parDe(i + 1);
-    return par ? { numero: i + 1, direccion: par.publicKey() } : null;
-  }).filter((f) => f !== null);
-  return responder({ activo: true, firmantes });
+  if (!FIRMA_DEMO) return responder({ activo: false });
+  const disponibles = await firmantesConClave();
+  if (!disponibles.length) return responder({ activo: false });
+  return responder({ activo: true, firmantes: disponibles.map(({ numero, direccion }) => ({ numero, direccion })) });
 };
 
 export const POST: APIRoute = async ({ request, clientAddress }) => {
-  if (!demoActiva()) {
+  if (!FIRMA_DEMO) {
     return responder({ error: 'La firma de demo no está activa en este servidor.' }, 503);
   }
   const cuerpo = (await request.json().catch(() => ({}))) as { firmante?: unknown; hito?: unknown };
@@ -64,23 +85,21 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   if (typeof hito !== 'number' || !Number.isInteger(hito) || hito < 0) {
     return responder({ error: 'El número de hito no es válido.' }, 400);
   }
-  if (!SECRETOS[numero - 1]) {
-    return responder({ error: `La clave del firmante ${numero} no está configurada en el servidor.` }, 503);
-  }
-  const par = parDe(numero);
-  if (!par) {
-    return responder({ error: `La clave del firmante ${numero} configurada en el servidor no es válida.` }, 503);
-  }
   if (limiteSuperado(clientAddress)) {
     return responder({ error: 'Se aprobaron demasiadas veces desde esta conexión. Probá de nuevo en una hora.' }, 429);
   }
 
   try {
-    const cliente = await clienteParedViva();
+    const contrato = await campaniaActivaServidor();
+    const cliente = new Client({ contractId: contrato, rpcUrl: RED.rpcUrl, networkPassphrase: RED.passphrase });
     const [{ result: firmantes }, { result: resumen }] = await Promise.all([cliente.firmantes(), cliente.estado()]);
-    const direccion = par.publicKey();
-    if (!firmantes.includes(direccion)) {
-      return responder({ error: `La cuenta del firmante ${numero} no es firmante de esta campaña.` }, 409);
+    const direccion = firmantes[numero - 1] as string | undefined;
+    if (!direccion) {
+      return responder({ error: `La campaña no tiene un firmante en la posición ${numero}.` }, 409);
+    }
+    const secreto = secretoPara(direccion, numero);
+    if (!secreto) {
+      return responder({ error: `El servidor no tiene la clave del firmante ${numero}.` }, 503);
     }
     if (resumen.estado.tag !== 'Financiada') {
       return responder({ error: 'Los hitos se pueden aprobar solo cuando la campaña alcanzó la meta.' }, 409);
@@ -89,9 +108,10 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
       return responder({ error: `Ahora toca aprobar el hito ${resumen.hito_actual + 1}, no el ${hito + 1}.` }, 409);
     }
 
+    const par = Keypair.fromSecret(secreto);
     const envio = cola.then(async () => {
       const clienteFirma = new Client({
-        contractId: CONTRATOS.paredViva,
+        contractId: contrato,
         rpcUrl: RED.rpcUrl,
         networkPassphrase: RED.passphrase,
         publicKey: direccion,

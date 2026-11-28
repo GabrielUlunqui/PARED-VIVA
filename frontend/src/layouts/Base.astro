@@ -3,7 +3,7 @@ import '../styles/global.css';
 import ConectarWallet from '../components/wallet/ConectarWallet.astro';
 import Toast from '../components/ui/Toast.astro';
 import { ADMIN_WEB } from 'astro:env/server';
-import { usandoEnsayo } from '../contracts/config';
+import { campaniaActiva, usandoEnsayo } from '../contracts/config';
 
 interface Props {
   titulo?: string;
@@ -17,6 +17,7 @@ const {
   completo = false,
 } = Astro.props;
 const adminActivo = ADMIN_WEB;
+const campaniaMeta = await campaniaActiva();
 const ruta = Astro.url.pathname.replace(/\/$/, '') || '/';
 const enlaces = [
   { href: '/', texto: 'Inicio' },
@@ -33,6 +34,7 @@ const enlaces = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={descripcion} />
     <meta name="theme-color" content="#0a0812" />
+    <meta name="pv-campania" content={campaniaMeta} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

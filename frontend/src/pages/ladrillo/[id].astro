@@ -1,7 +1,7 @@
 ---
 import QRCode from 'qrcode';
 import Base from '../../layouts/Base.astro';
-import { CONTRATOS, RED } from '../../contracts/config';
+import { campaniaActiva, RED } from '../../contracts/config';
 import { datos } from '../../lib/datos';
 import { leerRecuerdo, urlGateway } from '../../lib/ipfs';
 import { formatearUsdc, type Campania, type Ladrillo, type Recuerdo } from '../../lib/tipos';
@@ -37,7 +37,7 @@ const columna = id % columnas;
 const url = new URL(`/ladrillo/${Astro.params.id}`, Astro.url.origin).toString();
 const qr = await QRCode.toString(url, { type: 'svg', margin: 1, color: { dark: '#0a0812', light: '#f3ede4' } });
 const fecha = ladrillo ? new Date(ladrillo.fecha * 1000).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-const explorador = `${RED.explorador}/contract/${CONTRATOS.paredViva}`;
+const explorador = `${RED.explorador}/contract/${await campaniaActiva()}`;
 if (!campania) Astro.response.status = 404;
 Astro.response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
 ---

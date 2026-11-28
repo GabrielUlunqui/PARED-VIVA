@@ -19,3 +19,29 @@ const IDS = {
 export const usandoEnsayo = import.meta.env?.PUBLIC_CAMPANIA === 'ensayo';
 
 export const CONTRATOS = { ...IDS, paredViva: usandoEnsayo ? IDS.paredVivaEnsayo : IDS.paredViva };
+
+/**
+ * Campaña activa para leer el contrato.
+ * En el navegador la inyecta Base.astro en <meta name="pv-campania"> desde el
+ * registro del servidor; en el servidor (SSR/endpoints) lee ese mismo registro.
+ * Si no hay registro o falla la lectura, se usa la de configuración como siempre.
+ */
+export async function campaniaActiva(): Promise<string> {
+  if (typeof document !== 'undefined') {
+    const meta = document.querySelector('meta[name="pv-campania"]')?.getAttribute('content');
+    if (meta) return meta;
+    return CONTRATOS.paredViva;
+  }
+  try {
+    const { existsSync, readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const archivo = join(process.cwd(), 'data', 'registro.json');
+    if (existsSync(archivo)) {
+      const registro = JSON.parse(readFileSync(archivo, 'utf-8')) as { activa?: string };
+      if (registro?.activa) return registro.activa;
+    }
+  } catch {
+    // sin registro o entorno sin fs: fallback de configuración
+  }
+  return CONTRATOS.paredViva;
+}
